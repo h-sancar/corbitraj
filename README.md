@@ -79,6 +79,25 @@ Main pages:
 - `/api-keys` local API key helper
 - `/settings` runtime settings
 
+## Run In GitHub Codespaces
+
+You can run the project without installing Python locally by using GitHub
+Codespaces:
+
+1. Open the repository on GitHub.
+2. Click `Code` -> `Codespaces` -> `Create codespace on main`.
+3. Wait for the container setup to finish. Dependencies are installed
+   automatically from `requirements.txt`.
+4. Run:
+
+```bash
+python server.py
+```
+
+Codespaces will forward port `8001` and open the dashboard in the browser.
+The devcontainer copies `.env.example` to `.env.local` automatically; fill real
+API keys only if you need private exchange data or order placement.
+
 ## Local API Key Helper
 
 The `/api/save-env` endpoint writes submitted API keys into `.env` and updates
