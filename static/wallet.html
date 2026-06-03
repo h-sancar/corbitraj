@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corbitraj - Wallet</title>
+<style>
+:root{--bg:#080d18;--surface:#0f1623;--card:#161e2e;--border:#1e293b;
+  --text:#e2e8f0;--muted:#64748b;--green:#10b981;--yellow:#eab308;
+  --red:#ef4444;--blue:#3b82f6;--cyan:#06b6d4;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;
+  font-size:13px;min-height:100vh;}
+.main{max-width:1100px;margin:24px auto;padding:0 20px;}
+.total-bar{background:var(--surface);border:1px solid var(--border);border-radius:8px;
+  padding:20px 24px;margin-bottom:20px;display:flex;align-items:center;gap:32px;flex-wrap:wrap;}
+.total-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.total-val{font-size:28px;font-weight:800;color:var(--green);font-family:monospace;}
+.refresh-btn{margin-left:auto;background:var(--blue)18;border:1px solid var(--blue)40;
+  color:var(--blue);border-radius:6px;padding:7px 16px;cursor:pointer;font-size:12px;font-weight:600;}
+.refresh-btn:hover{background:var(--blue)30;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.card-header{padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;}
+.ex-name{font-weight:700;font-size:14px;}
+.ex-total{font-family:monospace;font-size:13px;color:var(--green);font-weight:700;}
+.card-body{padding:0;}
+table{width:100%;border-collapse:collapse;}
+tbody tr{border-bottom:1px solid #1e293b44;}
+tbody tr:hover{background:var(--card);}
+tbody td{padding:8px 14px;font-family:monospace;font-size:12px;}
+.asset{color:var(--text);font-weight:600;}
+.amount{color:var(--muted);}
+.usdt-val{color:var(--green);font-weight:600;text-align:right;}
+.pct-bar-wrap{width:80px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+.pct-bar{height:100%;background:var(--green);border-radius:3px;}
+.loading{text-align:center;padding:24px;color:var(--muted);font-style:italic;}
+.no-key{text-align:center;padding:20px;color:var(--muted);font-size:11px;}
+.err{color:var(--red);font-size:11px;padding:10px 14px;}
+</style>
+</head>
+<body>
+<script src="/nav.js?v=5"></script>
+
+<div class="main">
+  <div class="total-bar">
+    <div>
+      <div class="total-label">Toplam Portföy Değeri</div>
+      <div class="total-val" id="total-usdt">$—</div>
+    </div>
+    <div>
+      <div class="total-label">Borsalar</div>
+      <div style="font-size:20px;font-weight:700;font-family:monospace" id="ex-count">—</div>
+    </div>
+    <div>
+      <div class="total-label">Son Güncelleme</div>
+      <div style="font-size:13px;color:var(--muted);font-family:monospace" id="last-update">—</div>
+    </div>
+    <button class="refresh-btn" onclick="loadAll()">↻ Yenile</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+// Borsa listesi — API sayfasındakiyle aynı
+const EXCHANGES = [
+  {id:'binance',  name:'Binance',     color:'#f59e0b'},
+  {id:'binancetr',name:'Binance TRY', color:'#f0b90b'},
+  {id:'bybit',    name:'Bybit',       color:'#f97316'},
+  {id:'bybiteu',  name:'Bybit EU',   color:'#fb923c'},
+  {id:'kraken',   name:'Kraken',      color:'#4f46e5'},
+  {id:'okx',      name:'OKX',         color:'#06b6d4'},
+  {id:'bitget',   name:'Bitget',      color:'#10b981'},
+  {id:'kucoin',   name:'KuCoin',      color:'#22c55e'},
+  {id:'gateio',   name:'Gate.io',     color:'#3b82f6'},
+  {id:'mexc',     name:'MEXC',        color:'#8b5cf6'},
+  {id:'htx',      name:'HTX',         color:'#ef4444'},
+  {id:'cryptocom',name:'Crypto.com',  color:'#0ea5e9'},
+  {id:'whitebit', name:'WhiteBit',    color:'#a855f7'},
+  {id:'bingx',    name:'BingX',       color:'#f59e0b'},
+  {id:'bitmart',  name:'BitMart',     color:'#ec4899'},
+  {id:'poloniex', name:'Poloniex',    color:'#14b8a6'},
+  {id:'bitfinex', name:'Bitfinex',    color:'#84cc16'},
+  {id:'lbank',    name:'LBank',       color:'#fb923c'},
+  {id:'upbit',    name:'Upbit',       color:'#60a5fa'},
+  {id:'bitstamp', name:'Bitstamp',    color:'#34d399'},
+  {id:'gemini',   name:'Gemini',      color:'#c084fc'},
+  {id:'coinbase', name:'Coinbase',    color:'#2563eb'},
+  {id:'paribu',   name:'Paribu',      color:'#f43f5e'},
+  {id:'btcturk',  name:'BtcTürk',    color:'#dc2626'},
+  {id:'bithumb',  name:'Bithumb',     color:'#d97706'},
+];
+const I18N = {
+  tr: {
+    title: 'Corbitraj - Cüzdan',
+    totalValue: 'Toplam Portföy Değeri',
+    exchanges: 'Borsalar',
+    lastUpdate: 'Son Güncelleme',
+    refresh: '↻ Yenile',
+    loading: 'Yükleniyor...',
+    noApiKey: 'API anahtarı girilmemiş',
+    apiPage: 'API sayfasına git →',
+    noBalance: 'Bakiye yok',
+    exchangeUnit: 'borsa',
+  },
+  en: {
+    title: 'Corbitraj - Wallet',
+    totalValue: 'Total Portfolio Value',
+    exchanges: 'Exchanges',
+    lastUpdate: 'Last Update',
+    refresh: '↻ Refresh',
+    loading: 'Loading...',
+    noApiKey: 'API key not entered',
+    apiPage: 'Go to API page →',
+    noBalance: 'No balance',
+    exchangeUnit: 'exchanges',
+  },
+};
+
+function lang() {
+  return window.CorbitrajI18n?.getLang?.() || 'en';
+}
+
+function t(key) {
+  return I18N[lang()]?.[key] || I18N.tr[key] || key;
+}
+
+function bt(value) {
+  return window.CorbitrajI18n?.translateBackendText?.(value) || String(value ?? '');
+}
+
+function applyLanguage() {
+  document.documentElement.lang = lang();
+  document.title = t('title');
+  const labels = document.querySelectorAll('.total-label');
+  if (labels[0]) labels[0].textContent = t('totalValue');
+  if (labels[1]) labels[1].textContent = t('exchanges');
+  if (labels[2]) labels[2].textContent = t('lastUpdate');
+  document.querySelector('.refresh-btn').textContent = t('refresh');
+  document.querySelectorAll('.loading').forEach(el => { el.textContent = t('loading'); });
+}
+
+// Stabil coin listesi (USDT değeri = 1)
+const STABLES = new Set(['USDT','USDC','BUSD','TUSD','FDUSD','DAI','PYUSD',
+  'USDP','FRAX','LUSD','GUSD','EURS','EURT','TRYB','TRY','KRW']);
+
+let prices = {};       // {BTC: 65000, ETH: 3200, ...} Binance'ten
+let grandTotal = 0;
+let activeExchanges = 0;
+
+async function fetchPrices() {
+  try {
+    const r = await fetch('https://api.binance.com/api/v3/ticker/price');
+    const data = await r.json();
+    prices = {};
+    data.forEach(d => {
+      if(d.symbol.endsWith('USDT')) {
+        const base = d.symbol.slice(0,-4);
+        prices[base] = parseFloat(d.price);
+      }
+    });
+    prices['USDT'] = 1;
+    STABLES.forEach(s => { if(!prices[s]) prices[s] = 1; });
+  } catch(e) {
+    console.warn('Fiyat çekilemedi:', e);
+  }
+}
+
+function toUsdt(asset, amount) {
+  if(STABLES.has(asset)) return amount;
+  return (prices[asset] || 0) * amount;
+}
+
+function fmt(n, d=2) { return Number(n).toFixed(d); }
+function fmtUsdt(n) {
+  if(n >= 1000000) return '$' + (n/1000000).toFixed(2) + 'M';
+  if(n >= 1000)    return '$' + (n/1000).toFixed(2) + 'K';
+  return '$' + fmt(n, 2);
+}
+
+async function loadExchange(ex) {
+  const card = document.getElementById(`card-${ex.id}`);
+  const r = await fetch(`/api/balance?exchange=${ex.id}`);
+  const d = await r.json();
+
+  if(d.error) {
+    const isKeyMissing = d.error.includes('apiKey') || d.error.includes('API anahtarı') ||
+                         d.error.includes('authenticate') || d.error.includes('credential') ||
+                         d.error.includes('requires');
+    card.querySelector('.card-body').innerHTML =
+      isKeyMissing
+        ? `<div class="no-key">${t('noApiKey')}<br><a href="/api-keys" style="color:var(--blue)">${t('apiPage')}</a></div>`
+        : `<div class="err">${bt(d.error).slice(0,120)}</div>`;
+    return 0;
+  }
+
+  const free = d.free || {};
+  const rows = Object.entries(free)
+    .map(([asset, amount]) => ({ asset, amount, usdt: toUsdt(asset, amount) }))
+    .filter(r => r.usdt >= 0.01)
+    .sort((a,b) => b.usdt - a.usdt);
+
+  const exTotal = rows.reduce((s, r) => s + r.usdt, 0);
+  card.querySelector('.ex-total').textContent = fmtUsdt(exTotal);
+
+  if(!rows.length) {
+    card.querySelector('.card-body').innerHTML = `<div class="no-key">${t('noBalance')}</div>`;
+    return exTotal;
+  }
+
+  const maxUsdt = rows[0].usdt;
+  card.querySelector('.card-body').innerHTML = `
+    <table><tbody>
+      ${rows.map(r => `<tr>
+        <td class="asset">${r.asset}</td>
+        <td class="amount">${fmt(r.amount, 6)}</td>
+        <td>
+          <div class="pct-bar-wrap">
+            <div class="pct-bar" style="width:${maxUsdt>0?Math.min(100,(r.usdt/maxUsdt)*100):0}%"></div>
+          </div>
+        </td>
+        <td class="usdt-val">${fmtUsdt(r.usdt)}</td>
+      </tr>`).join('')}
+    </tbody></table>`;
+
+  return exTotal;
+}
+
+async function loadAll() {
+  grandTotal = 0;
+  activeExchanges = 0;
+  document.getElementById('total-usdt').textContent = '$…';
+
+  await fetchPrices();
+
+  const results = await Promise.all(EXCHANGES.map(ex => loadExchange(ex)));
+  results.forEach(v => {
+    if(v > 0) { grandTotal += v; activeExchanges++; }
+  });
+
+  document.getElementById('total-usdt').textContent = fmtUsdt(grandTotal);
+  document.getElementById('ex-count').textContent   = activeExchanges + ' ' + t('exchangeUnit');
+  document.getElementById('last-update').textContent = new Date().toLocaleTimeString(lang() === 'tr' ? 'tr-TR' : 'en-US');
+}
+
+// Kartları oluştur
+const grid = document.getElementById('grid');
+EXCHANGES.forEach(ex => {
+  grid.innerHTML += `
+    <div class="card" id="card-${ex.id}">
+      <div class="card-header">
+        <span class="ex-name" style="color:${ex.color}">${ex.name}</span>
+        <span class="ex-total" id="total-${ex.id}">$—</span>
+      </div>
+      <div class="card-body"><div class="loading">${t('loading')}</div></div>
+    </div>`;
+});
+
+window.CorbitrajI18n?.onChange(applyLanguage);
+applyLanguage();
+loadAll();
+</script>
+</body>
+</html>

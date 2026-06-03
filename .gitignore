@@ -1,0 +1,50 @@
+# Secrets and local credentials
+.env
+.env.*
+!.env.example
+api.txt
+api.local.txt
+notlar.txt
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Runtime state and caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coingecko_cache.json
+.coin_identity_cache.json
+.excluded_pairs.json
+*.log
+*.db
+*.sqlite
+*.sqlite3
+
+# Local environments
+.venv/
+venv/
+env/
+ENV/
+
+# Editor and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Node dependencies if helper projects are installed locally
+node_modules/
+dist/
+build/
+
+# Unrelated local tooling copied into the workspace
+openwolf/
+
+# Local AI assistant instructions, not part of the product repository
+AGENTS.md
+CLAUDE.md

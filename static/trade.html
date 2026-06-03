@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corbitraj - Trade</title>
+<style>
+:root{--bg:#080d18;--surface:#0f1623;--card:#161e2e;--border:#1e293b;
+  --text:#e2e8f0;--muted:#64748b;--green:#10b981;--red:#ef4444;
+  --yellow:#eab308;--blue:#3b82f6;--cyan:#06b6d4;}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;
+  font-size:13px;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+
+/* Kuru çalışma uyarısı */
+.dry-warn{background:#f59e0b18;border-bottom:1px solid #f59e0b40;color:#f59e0b;
+  padding:6px 20px;font-size:12px;display:none;flex-shrink:0;}
+
+/* Grafik — her zaman nav'ın hemen altında */
+#chart-wrap{
+  height:360px; flex-shrink:0;
+  display:flex; background:#080d18;
+  border-bottom:1px solid var(--border);
+}
+#chart-wrap > div {
+  flex:1; display:flex; flex-direction:column; overflow:hidden;
+  height:360px;
+}
+#chart-wrap > div:first-child { border-right:1px solid var(--border); }
+.chart-label{
+  font-size:10px; color:var(--muted); padding:3px 10px;
+  background:var(--card); border-bottom:1px solid var(--border);
+  font-family:monospace; flex-shrink:0; height:22px;
+}
+.chart-inner{ height:338px; overflow:hidden; }
+.chart-fallback{
+  height:338px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:10px; color:var(--muted); font-size:12px; text-align:center; padding:24px;
+}
+.chart-fallback b{color:var(--text);font-family:monospace;}
+.chart-fallback a{
+  display:inline-block;background:#10b98120;border:1px solid #10b98140;color:var(--green);
+  border-radius:6px;padding:7px 12px;text-decoration:none;font-weight:700;
+}
+
+/* Sembol çubuğu */
+#sym-bar{background:var(--surface);border-bottom:1px solid var(--border);
+  padding:7px 20px;display:flex;align-items:center;gap:20px;flex-shrink:0;}
+.sym-name{font-size:18px;font-weight:800;font-family:monospace;color:var(--text);}
+.sym-price{font-size:14px;font-family:monospace;}
+.spread-info{font-size:11px;color:var(--muted);font-family:monospace;}
+.sym-input{background:var(--card);border:1px solid var(--border);color:var(--text);
+  border-radius:6px;padding:5px 10px;font-size:14px;font-family:monospace;
+  outline:none;width:160px;}
+.sym-input:focus{border-color:var(--blue);}
+.load-btn{background:var(--blue)18;border:1px solid var(--blue)40;color:var(--blue);
+  border-radius:6px;padding:5px 14px;cursor:pointer;font-size:12px;font-weight:600;}
+
+/* İki panel */
+.panels{display:flex;flex:1;min-height:0;overflow:hidden;}
+.side{flex:1;display:flex;flex-direction:column;overflow-y:auto;
+  border-right:1px solid var(--border);}
+.side:last-child{border-right:none;}
+.side-header{padding:10px 16px;background:var(--card);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.side-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
+.side-label.buy{color:var(--green);}
+.side-label.sell{color:var(--red);}
+.side-body{padding:14px;display:flex;flex-direction:column;gap:10px;}
+label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+  display:block;margin-bottom:3px;}
+select,input[type=number],input[type=text]{width:100%;background:var(--card);
+  border:1px solid var(--border);color:var(--text);border-radius:6px;
+  padding:7px 10px;font-size:13px;font-family:monospace;outline:none;}
+select:focus,input:focus{border-color:var(--blue);}
+.price-box{background:var(--card);border-radius:6px;padding:10px 14px;
+  display:flex;flex-direction:column;gap:3px;}
+.price-val{font-size:20px;font-weight:800;font-family:monospace;}
+.price-sub{font-size:11px;color:var(--muted);}
+.submit-btn{width:100%;padding:11px;border:none;border-radius:6px;
+  font-size:15px;font-weight:700;cursor:pointer;transition:opacity .15s;letter-spacing:.3px;}
+.submit-btn:hover{opacity:.85;}
+.btn-buy {background:var(--green);color:#000;}
+.btn-sell{background:var(--red);  color:#fff;}
+.balance-row{display:flex;justify-content:space-between;padding:4px 0;
+  border-bottom:1px solid var(--border)33;font-size:12px;}
+.balance-row:last-child{border:none;}
+.bal-a{color:var(--muted);font-family:monospace;}
+.bal-v{font-family:monospace;font-weight:600;}
+table{width:100%;border-collapse:collapse;}
+thead th{font-size:9px;color:var(--muted);text-transform:uppercase;padding:5px 8px;
+  text-align:left;border-bottom:1px solid var(--border);}
+tbody td{padding:6px 8px;font-family:monospace;font-size:11px;
+  border-bottom:1px solid var(--border)33;}
+.cancel-btn{background:var(--red)18;border:1px solid var(--red)40;color:var(--red);
+  border-radius:3px;padding:2px 7px;cursor:pointer;font-size:9px;}
+.coin-info{background:var(--card);border:1px solid var(--border);border-radius:6px;
+  padding:9px 10px;font-size:11px;line-height:1.45;color:var(--muted);}
+.coin-info-title{display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin-bottom:4px;font-size:10px;text-transform:uppercase;
+  letter-spacing:.5px;color:var(--text);font-weight:700;}
+.coin-info a{color:var(--blue);text-decoration:none;}
+.coin-info a:hover{text-decoration:underline;}
+.section-title{font-size:10px;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.6px;margin-top:4px;}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--card);
+  border:1px solid var(--border);border-radius:8px;padding:12px 18px;
+  font-size:13px;max-width:340px;z-index:99;display:none;}
+.toast.ok{border-color:var(--green)60;color:var(--green);}
+.toast.err{border-color:var(--red)60;color:var(--red);}
+#limit-l,#limit-r{display:block;}
+
+/* Order Book */
+.ob-wrap{
+  font-family:monospace; font-size:11px;
+  border:1px solid var(--border); background:#0b111d;
+}
+.ob-head,.ob-row{
+  display:grid; grid-template-columns:minmax(92px,1fr) minmax(76px,.8fr);
+  align-items:center; min-height:24px;
+}
+.ob-head{
+  background:var(--surface); color:var(--muted);
+  border-bottom:1px solid var(--border);
+  text-transform:uppercase; letter-spacing:.5px; font-size:9px;
+}
+.ob-row{
+  position:relative; cursor:pointer;
+  border-bottom:1px solid #1e293b66;
+}
+.ob-row:last-child{border-bottom:none;}
+.ob-row:hover{background:#1e293b55;}
+.ob-bar{
+  position:absolute; top:0; bottom:0; right:0;
+  opacity:.18; z-index:0;
+}
+.ob-head span,.ob-row span{position:relative;z-index:1;padding:4px 8px;}
+.ob-head span:last-child,.ob-amt{text-align:right;}
+.ob-price{font-weight:700;}
+.ob-amt{color:var(--muted);}
+.ob-ask .ob-price{color:var(--red);}
+.ob-ask .ob-bar{background:var(--red);}
+.ob-bid .ob-price{color:var(--green);}
+.ob-bid .ob-bar{background:var(--green);}
+.ob-spread{
+  display:grid; grid-template-columns:1fr auto 1fr; align-items:center;
+  min-height:26px; padding:0 8px; font-size:11px; font-family:monospace;
+  border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+  background:var(--card);
+}
+.ob-spread span:first-child{text-align:left;color:var(--red);}
+.ob-spread span:nth-child(2){color:var(--muted);padding:0 10px;}
+.ob-spread span:last-child{text-align:right;color:var(--green);}
+.ob-empty{
+  min-height:28px; display:flex; align-items:center; padding:0 8px;
+  color:var(--muted); background:#0b111d;
+}
+</style>
+</head>
+<body>
+<script src="/nav.js?v=5"></script>
+
+<div class="dry-warn" id="dry-warn">
+  ⚠ DRY_RUN aktif — Gerçek emir gönderilmez. Ayarlar sayfasından kapatabilirsiniz.
+</div>
+
+<!-- İki grafik — üst kısım, sabit yükseklik -->
+<div id="chart-wrap">
+  <div>
+    <div class="chart-label" id="chart-label-buy">▲ AL —</div>
+    <div class="chart-inner" id="chart-buy"></div>
+  </div>
+  <div>
+    <div class="chart-label" id="chart-label-sell">▼ SAT —</div>
+    <div class="chart-inner" id="chart-sell"></div>
+  </div>
+</div>
+
+<!-- Sembol çubuğu -->
+<div id="sym-bar">
+  <input class="sym-input" id="sym-input" value="BTC/USDT"
+    onkeydown="if(event.key==='Enter')load()">
+  <button class="load-btn" onclick="load()">↺ Yükle</button>
+  <div class="sym-price">
+    <span style="color:var(--green)">A: <b id="g-ask">—</b></span>
+    <span style="color:var(--muted);margin:0 6px">|</span>
+    <span style="color:var(--red)">B: <b id="g-bid">—</b></span>
+  </div>
+  <div class="spread-info" id="g-spread">—</div>
+</div>
+
+<!-- İki panel -->
+<div class="panels">
+
+  <!-- SOL: ALIŞ -->
+  <div class="side" id="side-buy">
+    <div class="side-header">
+      <span class="side-label buy">▲ AL (BUY)</span>
+      <select id="ex-buy" onchange="loadSide('buy')" style="flex:1;padding:4px 8px;font-size:12px">
+        <option value="binance">Binance</option>
+      </select>
+    </div>
+    <div class="side-body">
+      <div class="price-box">
+        <div class="price-sub">Ask Fiyatı (alış)</div>
+        <div class="price-val" id="price-buy" style="color:var(--green)">—</div>
+        <div class="price-sub" id="chg-buy">—</div>
+      </div>
+      <div>
+        <label>Emir Türü</label>
+        <select id="type-buy" onchange="toggleLimit('buy')">
+          <option value="limit" selected>Limit</option>
+          <option value="market">Market</option>
+        </select>
+      </div>
+      <div id="limit-l">
+        <label>Limit Fiyat</label>
+        <input type="number" id="lp-buy" step="any" placeholder="0.00">
+      </div>
+      <div>
+        <label>Miktar (<span id="base-buy">BTC</span>)</label>
+        <input type="number" id="amt-buy" step="any" placeholder="0.001">
+      </div>
+      <label style="display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);cursor:pointer">
+        <input type="checkbox" id="hidden-buy" style="width:14px;height:14px">
+        <span class="hidden-title">Gizli Emir</span> <span class="hidden-hint" style="font-size:10px;color:#475569">(order book'ta görünmez)</span>
+      </label>
+      <button class="submit-btn btn-buy" onclick="submitOrder('buy')">
+        AL — <span id="base-buy2">BTC</span> SAT
+      </button>
+      <div class="section-title">Order Book</div>
+      <div class="ob-wrap" id="ob-buy"><div class="ob-empty">Yükleniyor…</div></div>
+
+      <div class="section-title">Bakiye</div>
+      <div id="bal-buy"><div style="color:var(--muted);font-size:11px">API anahtarı gerekli</div></div>
+      <div class="section-title">Açık Emirler</div>
+      <table><thead><tr><th>Miktar</th><th>Fiyat</th><th>Tür</th><th></th></tr></thead>
+        <tbody id="ord-buy"><tr><td colspan="4" style="color:var(--muted);padding:8px">—</td></tr></tbody>
+      </table>
+      <div id="coin-info-buy" class="coin-info">Coin açıklaması yükleniyor...</div>
+    </div>
+  </div>
+
+  <!-- SAĞ: SATIŞ -->
+  <div class="side" id="side-sell">
+    <div class="side-header">
+      <span class="side-label sell">▼ SAT (SELL)</span>
+      <select id="ex-sell" onchange="loadSide('sell')" style="flex:1;padding:4px 8px;font-size:12px">
+        <option value="bybit">Bybit</option>
+      </select>
+    </div>
+    <div class="side-body">
+      <div class="price-box">
+        <div class="price-sub">Bid Fiyatı (satış)</div>
+        <div class="price-val" id="price-sell" style="color:var(--red)">—</div>
+        <div class="price-sub" id="chg-sell">—</div>
+      </div>
+      <div>
+        <label>Emir Türü</label>
+        <select id="type-sell" onchange="toggleLimit('sell')">
+          <option value="limit" selected>Limit</option>
+          <option value="market">Market</option>
+        </select>
+      </div>
+      <div id="limit-r">
+        <label>Limit Fiyat</label>
+        <input type="number" id="lp-sell" step="any" placeholder="0.00">
+      </div>
+      <div>
+        <label>Miktar (<span id="base-sell">BTC</span>)</label>
+        <input type="number" id="amt-sell" step="any" placeholder="0.001">
+      </div>
+      <label style="display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);cursor:pointer">
+        <input type="checkbox" id="hidden-sell" style="width:14px;height:14px">
+        <span class="hidden-title">Gizli Emir</span> <span class="hidden-hint" style="font-size:10px;color:#475569">(order book'ta görünmez)</span>
+      </label>
+      <button class="submit-btn btn-sell" onclick="submitOrder('sell')">
+        SAT — <span id="base-sell2">BTC</span> AL
+      </button>
+      <div class="section-title">Order Book</div>
+      <div class="ob-wrap" id="ob-sell"><div class="ob-empty">Yükleniyor…</div></div>
+
+      <div class="section-title">Bakiye</div>
+      <div id="bal-sell"><div style="color:var(--muted);font-size:11px">API anahtarı gerekli</div></div>
+      <div class="section-title">Açık Emirler</div>
+      <table><thead><tr><th>Miktar</th><th>Fiyat</th><th>Tür</th><th></th></tr></thead>
+        <tbody id="ord-sell"><tr><td colspan="4" style="color:var(--muted);padding:8px">—</td></tr></tbody>
+      </table>
+      <div id="coin-info-sell" class="coin-info">Coin açıklaması yükleniyor...</div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ── URL parametreleri ────────────────────────────────────────
+const params  = new URLSearchParams(window.location.search);
+const initSym  = (params.get('sym')  || 'BTC/USDT').toUpperCase();
+const initBuy  =  params.get('buy')  || 'binance';
+const initSell =  params.get('sell') || 'bybit';
+const I18N = {
+  tr: {
+    title: 'Corbitraj - Trade',
+    dryWarn: '⚠ DRY_RUN aktif - Gerçek emir gönderilmez. Ayarlar sayfasından kapatabilirsiniz.',
+    load: '↺ Yükle',
+    buySide: '▲ AL (BUY)',
+    sellSide: '▼ SAT (SELL)',
+    buyShort: 'AL',
+    sellShort: 'SAT',
+    askPrice: 'Ask Fiyatı (alış)',
+    bidPrice: 'Bid Fiyatı (satış)',
+    orderType: 'Emir Türü',
+    limitPrice: 'Limit Fiyat',
+    amount: 'Miktar',
+    hiddenOrder: 'Gizli Emir',
+    hiddenHint: "(order book'ta görünmez)",
+    balance: 'Bakiye',
+    openOrders: 'Açık Emirler',
+    price: 'Fiyat',
+    type: 'Tür',
+    loading: 'Yükleniyor...',
+    apiKeyRequired: 'API anahtarı gerekli',
+    coinLoading: 'Coin açıklaması yükleniyor...',
+    lbankChart: "LBank spot grafiği TradingView widget'ında bulunmayabiliyor.",
+    openOnLbank: "LBank'te Aç",
+    error: 'Hata',
+    description: 'açıklaması',
+    descriptionLoading: 'Açıklama yükleniyor...',
+    descriptionMissing: 'Açıklama bulunamadı.',
+    website: 'Web sitesi',
+    noData: 'Veri yok',
+    apiKeyMissing: 'API anahtarı girilmemiş',
+    apiPage: 'API sayfası →',
+    invalidKey: '❌ API key geçersiz',
+    possibleReasons: 'Olası sebepler:',
+    ipRestriction: '• IP kısıtlaması aktif → borsa ayarlarında "No Restriction" seçin',
+    wrongKey: '• Yanlış key/secret → tekrar kontrol edin',
+    missingPermission: '• Yetersiz izin → Read + Trade izni gerekli',
+    noBalance: 'Bakiye yok',
+    noOpenOrders: 'Açık emir yok',
+    enterAmount: 'Miktar giriniz',
+    orderSent: 'Emir gönderildi',
+    cancelled: 'İptal edildi',
+  },
+  en: {
+    title: 'Corbitraj - Trade',
+    dryWarn: '⚠ DRY_RUN is active - real orders will not be submitted. You can disable it on the Settings page.',
+    load: '↺ Load',
+    buySide: '▲ BUY',
+    sellSide: '▼ SELL',
+    buyShort: 'BUY',
+    sellShort: 'SELL',
+    askPrice: 'Ask Price (buy)',
+    bidPrice: 'Bid Price (sell)',
+    orderType: 'Order Type',
+    limitPrice: 'Limit Price',
+    amount: 'Amount',
+    hiddenOrder: 'Hidden Order',
+    hiddenHint: '(not shown in the order book)',
+    balance: 'Balance',
+    openOrders: 'Open Orders',
+    price: 'Price',
+    type: 'Type',
+    loading: 'Loading...',
+    apiKeyRequired: 'API key required',
+    coinLoading: 'Coin description loading...',
+    lbankChart: 'LBank spot chart may not be available in the TradingView widget.',
+    openOnLbank: 'Open on LBank',
+    error: 'Error',
+    description: 'description',
+    descriptionLoading: 'Description loading...',
+    descriptionMissing: 'Description not found.',
+    website: 'Website',
+    noData: 'No data',
+    apiKeyMissing: 'API key not entered',
+    apiPage: 'API page →',
+    invalidKey: '❌ Invalid API key',
+    possibleReasons: 'Possible reasons:',
+    ipRestriction: '• IP restriction is active → choose "No Restriction" in exchange settings',
+    wrongKey: '• Wrong key/secret → check again',
+    missingPermission: '• Missing permission → Read + Trade permission required',
+    noBalance: 'No balance',
+    noOpenOrders: 'No open orders',
+    enterAmount: 'Enter an amount',
+    orderSent: 'Order submitted',
+    cancelled: 'Cancelled',
+  },
+};
+
+function lang() {
+  return window.CorbitrajI18n?.getLang?.() || 'en';
+}
+
+function t(key) {
+  return I18N[lang()]?.[key] || I18N.tr[key] || key;
+}
+
+function bt(value) {
+  return window.CorbitrajI18n?.translateBackendText?.(value) || String(value ?? '');
+}
+
+function setText(selector, key) {
+  const el = document.querySelector(selector);
+  if (el) el.textContent = t(key);
+}
+
+function updateBaseLabel(side, base) {
+  document.getElementById(`base-${side}`).textContent = base;
+  const btn = document.querySelector(`#side-${side} .submit-btn`);
+  btn.innerHTML = `${side === 'buy' ? t('buyShort') : t('sellShort')} - <span id="base-${side}2">${esc(base)}</span>`;
+}
+
+function applyLanguage() {
+  document.documentElement.lang = lang();
+  document.title = t('title');
+  setText('#dry-warn', 'dryWarn');
+  setText('.load-btn', 'load');
+  setText('#side-buy .side-label', 'buySide');
+  setText('#side-sell .side-label', 'sellSide');
+  document.querySelector('#side-buy .price-box .price-sub').textContent = t('askPrice');
+  document.querySelector('#side-sell .price-box .price-sub').textContent = t('bidPrice');
+  document.querySelectorAll('.side-body > div > label').forEach((label, index) => {
+    const keys = ['orderType', 'limitPrice', 'amount', 'orderType', 'limitPrice', 'amount'];
+    if (keys[index]) label.childNodes[0].textContent = t(keys[index]) + ' ';
+  });
+  document.querySelectorAll('.hidden-title').forEach(el => { el.textContent = t('hiddenOrder'); });
+  document.querySelectorAll('.hidden-hint').forEach(el => { el.textContent = t('hiddenHint'); });
+  const sectionTitles = document.querySelectorAll('.section-title');
+  if (sectionTitles[1]) sectionTitles[1].textContent = t('balance');
+  if (sectionTitles[2]) sectionTitles[2].textContent = t('openOrders');
+  if (sectionTitles[4]) sectionTitles[4].textContent = t('balance');
+  if (sectionTitles[5]) sectionTitles[5].textContent = t('openOrders');
+  document.querySelectorAll('thead th').forEach((th, index) => {
+    const keys = ['amount', 'price', 'type', '', 'amount', 'price', 'type', ''];
+    if (keys[index]) th.textContent = t(keys[index]);
+  });
+  document.querySelectorAll('.ob-empty').forEach(el => {
+    if (el.textContent.trim()) el.textContent = t('loading');
+  });
+  ['buy', 'sell'].forEach(side => {
+    const bal = document.querySelector(`#bal-${side} > div`);
+    if (bal && bal.textContent.trim()) bal.textContent = t('apiKeyRequired');
+    const info = document.getElementById(`coin-info-${side}`);
+    if (info && !info.querySelector('.coin-info-title')) info.textContent = t('coinLoading');
+  });
+  const base = sym().split('/')[0] || 'BTC';
+  updateBaseLabel('buy', base);
+  updateBaseLabel('sell', base);
+  loadChart();
+}
+
+// ── Yardımcılar ──────────────────────────────────────────────
+const TV_PREFIX = {
+  binance:'BINANCE',binancetr:'BINANCE',bybit:'BYBIT',okx:'OKX',kucoin:'KUCOIN',
+  gateio:'GATEIO',mexc:'MEXC',htx:'HUOBI',bitget:'BITGET',
+  cryptocom:'CRYPTOCOM',whitebit:'WHITEBIT',poloniex:'POLONIEX',
+  bitfinex:'BITFINEX',coinbase:'COINBASE',bitstamp:'BITSTAMP',
+  gemini:'GEMINI',bingx:'BINGX',bitmart:'BITMART',upbit:'UPBIT',
+  lbank:'LBANK',kraken:'KRAKEN',
+};
+
+function tvSymbol(exchange, symbol) {
+  if ((exchange === 'binance' || exchange === 'htx' || exchange === 'lbank') && symbol === 'SLEEPLESSAI/USDT') {
+    return 'AIUSDT';
+  }
+  return symbol.replace('/','');
+}
+
+function spotTradeUrl(exchange, symbol) {
+  const [base, quote] = symbol.split('/');
+  if (exchange === 'lbank' && base && quote) {
+    return `https://www.lbank.com/trade/${base.toLowerCase()}_${quote.toLowerCase()}`;
+  }
+  return null;
+}
+
+// Fiyatın son anlamlı basamağına göre 1 tick hesapla
+function calcTick(price) {
+  if(!price || price <= 0) return 0.01;
+  const s   = price.toFixed(12).replace(/0+$/, '');
+  const dec = s.includes('.') ? s.split('.')[1].length : 0;
+  return 1 / Math.pow(10, Math.min(dec, 8));
+}
+
+function fmt(v) {
+  if(v==null||v===0) return '—';
+  const x=Number(v);
+  if(x>=1) return x.toFixed(4);
+  const e=Math.floor(Math.log10(Math.abs(x)));
+  return x.toFixed(Math.min(Math.max(6,-e+3),10));
+}
+
+function sym() { return document.getElementById('sym-input').value.trim().toUpperCase(); }
+function ex(side) { return document.getElementById(`ex-${side}`).value; }
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[ch]));
+}
+
+// Grafik yeniden yüklemeyi önlemek için mevcut durumu izle
+const _chartState = { buy: null, sell: null };
+const _coinInfoState = { buy: null, sell: null };
+
+// ── Grafik ───────────────────────────────────────────────────
+function maybeRebuildChart(side, exchange, symbol) {
+  const key = `${exchange}:${symbol}`;
+  if (_chartState[side] === key) return;   // değişmemişse yeniden yükleme
+  _chartState[side] = key;
+  setTimeout(() => buildTvWidget(`chart-${side}`, exchange, symbol), 150);
+}
+
+function buildTvWidget(containerId, exchange, symbol) {
+  const prefix = TV_PREFIX[exchange] || 'BINANCE';
+  const tvSym  = prefix + ':' + tvSymbol(exchange, symbol);
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  const spotUrl = spotTradeUrl(exchange, symbol);
+  if (spotUrl) {
+    c.innerHTML = `
+      <div class="chart-fallback">
+        <b>${esc(exchange.toUpperCase())}:${esc(symbol)}</b>
+        <div>${t('lbankChart')}</div>
+        <a href="${esc(spotUrl)}" target="_blank" rel="noopener">${t('openOnLbank')}</a>
+      </div>`;
+    return;
+  }
+
+  // Sabit boyutlar: chart-inner CSS'teki 338px, genişlik yarı-viewport
+  const h = 338;
+  const w = Math.floor((window.innerWidth - 2) / 2);
+
+  // TradingView, bu class isimleri olmadan widget'ı render etmez
+  const wrap = document.createElement('div');
+  wrap.className = 'tradingview-widget-container';
+  wrap.style.cssText = `height:${h}px;width:${w}px;`;
+
+  const inner = document.createElement('div');
+  inner.className = 'tradingview-widget-container__widget';
+  inner.style.cssText = `height:${h}px;width:${w}px;`;
+  wrap.appendChild(inner);
+
+  const scr = document.createElement('script');
+  scr.type = 'text/javascript';
+  scr.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+  scr.async = true;
+  scr.innerHTML = JSON.stringify({
+    autosize: false, width: w, height: h,
+    symbol: tvSym, interval: '15',
+    timezone: 'Europe/Istanbul', theme: 'dark', style: '1',
+    locale: lang(), allow_symbol_change: false,
+    // Gün ayırıcı çizgiler
+    studies: ['PeriodSeparators@tv-basicstudies', 'SessionBreaks@tv-basicstudies'],
+    overrides: {
+      'paneProperties.background':               '#131722',
+      'paneProperties.backgroundType':           'solid',
+      // Grid çizgilerini arka planla aynı renge getir
+      'paneProperties.horzGridProperties.color': '#131722',
+      'paneProperties.horzGridProperties.style':  0,
+      'paneProperties.vertGridProperties.color': '#131722',
+      'paneProperties.vertGridProperties.style':  0,
+      'scalesProperties.backgroundColor':        '#131722',
+    },
+    // Embed widget içindeki bazı araç çubuklarını gizle
+    disabled_features: [
+      'left_toolbar',
+      'header_compare',
+      'header_screenshot',
+      'header_saveload',
+    ],
+    enabled_features: [
+      'hide_left_toolbar_by_default',
+    ],
+  });
+  wrap.appendChild(scr);
+  c.appendChild(wrap);
+}
+
+function loadChart() {
+  const s    = sym();
+  const buyX = ex('buy');
+  const selX = ex('sell');
+  document.getElementById('chart-label-buy').textContent  = `▲ ${t('buyShort')} - ${buyX.toUpperCase()} : ${s}`;
+  document.getElementById('chart-label-sell').textContent = `▼ ${t('sellShort')} - ${selX.toUpperCase()} : ${s}`;
+  // Sadece değişiklik varsa rebuild et
+  maybeRebuildChart('buy',  buyX, s);
+  maybeRebuildChart('sell', selX, s);
+}
+
+// ── Fiyat yükle ──────────────────────────────────────────────
+async function loadSide(side) {
+  const s  = sym();
+  const e  = ex(side);
+  const base = s.split('/')[0] || 'BTC';
+  updateBaseLabel(side, base);
+  loadCoinInfo(side);
+
+  const lbl = side === 'buy'
+    ? `▲ ${t('buyShort')} - ${e.toUpperCase()} : ${s}`
+    : `▼ ${t('sellShort')} - ${e.toUpperCase()} : ${s}`;
+  document.getElementById(`chart-label-${side}`).textContent = lbl;
+  maybeRebuildChart(side, e, s);
+
+  try {
+    const r = await fetch(`/api/ticker?exchange=${e}&symbol=${encodeURIComponent(s)}`);
+    const d = await r.json();
+    if(d.error) { document.getElementById(`price-${side}`).textContent = t('error'); return; }
+
+    // Gösterilen fiyat: alımda ask (market fiyatı), satışta bid
+    const displayPrice = side==='buy' ? d.ask : d.bid;
+    document.getElementById(`price-${side}`).textContent = fmt(displayPrice);
+
+    // Limit fiyat: alımda bid+1tick (kuyrukta öne), satışta ask-1tick
+    const rawLimit = side==='buy' ? d.bid : d.ask;
+    if(rawLimit) {
+      const tick  = calcTick(rawLimit);
+      const final = side==='buy'
+        ? +(rawLimit + tick).toFixed(10)
+        : +(rawLimit - tick).toFixed(10);
+      document.getElementById(`lp-${side}`).value = final;
+    }
+
+    const chg = d.change;
+    const el  = document.getElementById(`chg-${side}`);
+    el.textContent = chg!=null ? (chg>=0?'+':'')+chg.toFixed(2)+'% (24s)' : '';
+    el.style.color = chg>=0 ? 'var(--green)' : 'var(--red)';
+
+    // Global spread hesapla
+    updateSpread();
+  } catch(e) {}
+
+  loadOrderbook(side);
+  loadBalance(side);
+  loadOrders(side);
+}
+
+async function loadCoinInfo(side) {
+  const s = sym();
+  const e = ex(side);
+  const base = s.split('/')[0] || s;
+  const key = `${e}:${s}`;
+  if (_coinInfoState[side] === key) return;
+  _coinInfoState[side] = key;
+
+  const el = document.getElementById(`coin-info-${side}`);
+  el.innerHTML = `<div class="coin-info-title">${esc(base)} ${t('description')}</div>
+    <div>${t('descriptionLoading')}</div>`;
+
+  try {
+    const r = await fetch(`/api/coin-info?exchange=${e}&symbol=${encodeURIComponent(s)}`);
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+
+    const title = `${d.name || base} (${d.symbol || base})`;
+    const source = d.source_url
+      ? `<a href="${esc(d.source_url)}" target="_blank" rel="noopener">CoinGecko</a>`
+      : '';
+    const homepage = d.homepage
+      ? `<div style="margin-top:6px"><a href="${esc(d.homepage)}" target="_blank" rel="noopener">${t('website')}</a></div>`
+      : '';
+    el.innerHTML = `<div class="coin-info-title"><span>${esc(title)}</span>${source}</div>
+      <div>${esc(d.description || t('descriptionMissing'))}</div>${homepage}`;
+  } catch(err) {
+    el.innerHTML = `<div class="coin-info-title">${esc(base)} ${t('description')}</div>
+      <div>${t('descriptionMissing')}</div>`;
+  }
+}
+
+function updateSpread() {
+  const ask = parseFloat(document.getElementById('price-buy').textContent)  || 0;
+  const bid = parseFloat(document.getElementById('price-sell').textContent) || 0;
+  if(!ask||!bid) return;
+  const spread = ((bid-ask)/ask*100);
+  const el = document.getElementById('g-spread');
+  el.textContent = `Spread: ${fmt(bid-ask)} (${spread>=0?'+':''}${spread.toFixed(3)}%)`;
+  el.style.color  = spread > 0 ? 'var(--green)' : 'var(--red)';
+  document.getElementById('g-ask').textContent = fmt(ask);
+  document.getElementById('g-bid').textContent = fmt(bid);
+}
+
+// ── Order Book ───────────────────────────────────────────────
+async function loadOrderbook(side) {
+  const s = sym();
+  const e = ex(side);
+  const r = await fetch(`/api/orderbook?exchange=${e}&symbol=${encodeURIComponent(s)}&limit=12`);
+  const d = await r.json();
+  if(d.error) return;
+  renderOrderbook(side, d.asks || [], d.bids || []);
+}
+
+function renderOrderbook(side, asks, bids) {
+  const el = document.getElementById(`ob-${side}`);
+  if(!asks.length && !bids.length) {
+    el.innerHTML = `<div class="ob-empty">${t('noData')}</div>`;
+    return;
+  }
+
+  // asks API'den: en iyi (en düşük) fiyat önce → [60001,0.5],[60002,0.3],...
+  // bids API'den: en iyi (en yüksek) fiyat önce → [60000,0.8],[59999,0.3],...
+
+  // Bar genişliği: her satırın kendi miktarına göre (kümülatif değil → piramit yok)
+  const maxAmt = Math.max(
+    ...asks.map(([,a])=>a), ...bids.map(([,a])=>a), 0.0001
+  );
+  // Kümülatif sadece gösterim için (hover tooltipsiz)
+  let cumA=0; const asksCum=asks.map(([p,a])=>{cumA+=a;return[p,a,a];});
+  let cumB=0; const bidsCum=bids.map(([p,a])=>{cumB+=a;return[p,a,a];});
+  const maxCum = maxAmt;
+
+  // Görüntü sırası: asks YÜKSEK→DÜŞÜK (en iyi ask alta yakın, spread ortada)
+  const asksDisplay = asksCum.slice().reverse();
+
+  const bestBid = bids[0]?.[0];
+  const bestAsk = asks[0]?.[0];
+  // AL → bid+tick | SAT → ask-tick
+  if(side === 'buy' && bestBid) {
+    const t = calcTick(bestBid);
+    document.getElementById('lp-buy').value  = +(bestBid + t).toFixed(10);
+  }
+  if(side === 'sell' && bestAsk) {
+    const t = calcTick(bestAsk);
+    document.getElementById('lp-sell').value = +(bestAsk - t).toFixed(10);
+  }
+
+  const fa = v => Number(v)<1 ? Number(v).toFixed(5) : Number(v).toFixed(3);
+
+  // ASKS: yüksek → düşük (spread'e doğru iniyor)
+  let html = `<div class="ob-head"><span>${t('price')}</span><span>${t('amount')}</span></div>`;
+  asksDisplay.forEach(([p,a,cum]) => {
+    const w = (cum/maxCum*100).toFixed(1);
+    html += `<div class="ob-row ob-ask" onclick="fillPrice('${side}',${p})">
+      <div class="ob-bar" style="width:${w}%"></div>
+      <span class="ob-price">${fmt(p)}</span>
+      <span class="ob-amt">${fa(a)}</span>
+    </div>`;
+  });
+
+  // Spread — ortada
+  const spread    = bestAsk && bestBid ? (bestAsk - bestBid) : 0;
+  const spreadPct = bestBid ? (spread / bestBid * 100).toFixed(3) : '—';
+  html += `<div class="ob-spread">
+    <span>${bestAsk ? fmt(bestAsk) : '—'}</span>
+    <span>↕ ${fmt(spread)} (${spreadPct}%)</span>
+    <span>${bestBid ? fmt(bestBid) : '—'}</span>
+  </div>`;
+
+  // BIDS: yüksek → düşük (spread'den uzaklaşıyor)
+  bidsCum.forEach(([p,a,cum]) => {
+    const w = (cum/maxCum*100).toFixed(1);
+    html += `<div class="ob-row ob-bid" onclick="fillPrice('${side}',${p})">
+      <div class="ob-bar" style="width:${w}%"></div>
+      <span class="ob-price">${fmt(p)}</span>
+      <span class="ob-amt">${fa(a)}</span>
+    </div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+function fillPrice(side, price) {
+  // Order book satırına tıklanınca limit fiyatı doldur ve limit moduna geç
+  document.getElementById(`type-${side}`).value = 'limit';
+  document.getElementById(side === 'buy' ? 'limit-l' : 'limit-r').style.display = 'block';
+  document.getElementById(`lp-${side}`).value = price;
+}
+
+// ── Bakiye ───────────────────────────────────────────────────
+async function loadBalance(side) {
+  const r = await fetch(`/api/balance?exchange=${ex(side)}`);
+  const d = await r.json();
+  const el = document.getElementById(`bal-${side}`);
+  if(d.error) {
+    const noKey = d.error.includes('API anahtarı') || d.error.includes('apiKey') ||
+                  d.error.includes('credential') || d.error.includes('requires');
+    const ipErr = d.error.includes('10003') || d.error.includes('invalid');
+    el.innerHTML = noKey
+      ? `<div style="color:var(--muted);font-size:11px">${t('apiKeyMissing')}<br>
+         <a href="/api-keys" style="color:var(--blue)">${t('apiPage')}</a></div>`
+      : ipErr
+      ? `<div style="color:var(--red);font-size:11px">${t('invalidKey')}<br>
+         <span style="color:var(--muted)">${t('possibleReasons')}<br>
+         ${t('ipRestriction')}<br>
+         ${t('wrongKey')}<br>
+         ${t('missingPermission')}</span></div>`
+      : `<div style="color:var(--red);font-size:11px">${bt(d.error).slice(0,120)}</div>`;
+    return;
+  }
+  const items = Object.entries(d.free||{}).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  el.innerHTML = items.length
+    ? items.map(([a,v])=>`<div class="balance-row"><span class="bal-a">${a}</span><span class="bal-v">${Number(v).toFixed(6)}</span></div>`).join('')
+    : `<div style="color:var(--muted);font-size:11px">${t('noBalance')}</div>`;
+}
+
+// ── Açık emirler ─────────────────────────────────────────────
+async function loadOrders(side) {
+  const s = sym();
+  const r = await fetch(`/api/orders?exchange=${ex(side)}&symbol=${encodeURIComponent(s)}`);
+  const d = await r.json();
+  const tbody = document.getElementById(`ord-${side}`);
+  if(d.error||!d.orders?.length) {
+    tbody.innerHTML=`<tr><td colspan="4" style="color:var(--muted);padding:8px">${t('noOpenOrders')}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = d.orders.map(o=>`<tr>
+    <td>${o.amount}</td><td>${o.price||'mkt'}</td><td>${o.type}</td>
+    <td><button class="cancel-btn" onclick="cancelOrd('${side}','${o.id}')">✕</button></td>
+  </tr>`).join('');
+}
+
+// ── Emir gönder ──────────────────────────────────────────────
+async function submitOrder(side) {
+  const s    = sym();
+  const e    = ex(side);
+  const otype = document.getElementById(`type-${side}`).value;
+  const amt   = parseFloat(document.getElementById(`amt-${side}`).value);
+  const lp    = parseFloat(document.getElementById(`lp-${side}`).value)||null;
+  if(!amt||amt<=0) { toast(t('enterAmount'),'err'); return; }
+  const isHidden = document.getElementById(`hidden-${side}`)?.checked;
+  const r = await fetch('/api/order',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({exchange:e, symbol:s, side, type:otype, amount:amt, price:lp,
+                          hidden: isHidden || false})
+  });
+  const d = await r.json();
+  if(d.error) { toast(bt(d.error),'err'); return; }
+  toast(`${t('orderSent')}: ${d.id||'OK'}`,'ok');
+  loadBalance(side); loadOrders(side);
+}
+
+async function cancelOrd(side, id) {
+  const r = await fetch('/api/cancel',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({exchange:ex(side), symbol:sym(), order_id:id})
+  });
+  const d = await r.json();
+  toast(d.error ? bt(d.error) : t('cancelled'), d.error?'err':'ok');
+  if(!d.error) loadOrders(side);
+}
+
+function toggleLimit(side) {
+  document.getElementById(side==='buy'?'limit-l':'limit-r').style.display =
+    document.getElementById(`type-${side}`).value==='limit' ? 'block' : 'none';
+}
+
+// ── Ana yükleme ──────────────────────────────────────────────
+function load() {
+  loadChart();
+  loadSide('buy');
+  loadSide('sell');
+}
+
+// ── Toast ────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast '+type; el.style.display='block';
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.style.display='none',4000);
+}
+
+// ── Başlangıç (sıralı) ───────────────────────────────────────
+async function init() {
+  // 1. Sembolü ayarla
+  document.getElementById('sym-input').value = initSym;
+
+  // 2. Borsa listesini sunucudan çek, dropdown'ları doldur
+  try {
+    const r = await fetch('/api/exchanges');
+    const d = await r.json();
+    const opts = (d.exchanges || [])
+      .map(e => `<option value="${e.id}">${e.name}</option>`)
+      .join('');
+    document.getElementById('ex-buy').innerHTML  = opts;
+    document.getElementById('ex-sell').innerHTML = opts;
+  } catch(e) { /* fallback'ler dropdown'da kalır */ }
+
+  // 3. URL parametrelerini uygula
+  const selBuy  = document.getElementById('ex-buy');
+  const selSell = document.getElementById('ex-sell');
+  // DEX exchange (@ içeriyor) ise dropdown'da olmayabilir — ilk CEX seçili kalır
+  if ([...selBuy.options].some(o => o.value === initBuy))
+    selBuy.value  = initBuy;
+  if ([...selSell.options].some(o => o.value === initSell))
+    selSell.value = initSell;
+
+  // 4. DRY_RUN uyarısı
+  fetch('/api/settings').then(r=>r.json()).then(d=>{
+    if(d.DRY_RUN) document.getElementById('dry-warn').style.display='block';
+  });
+
+  // 5. Pair datalist
+  fetch('/api/pairs').then(r=>r.json()).then(d=>{
+    const dl = document.createElement('datalist');
+    dl.id = 'sym-dl';
+    (d.pairs||[]).forEach(p=>{
+      const o=document.createElement('option'); o.value=p.s; dl.appendChild(o);
+    });
+    document.body.appendChild(dl);
+    document.getElementById('sym-input').setAttribute('list','sym-dl');
+  });
+
+  // 6. Grafik + fiyatlar
+  load();
+  setInterval(()=>{ loadSide('buy'); loadSide('sell'); }, 8000);
+setInterval(()=>{ loadOrderbook('buy'); loadOrderbook('sell'); }, 3000);
+}
+
+window.CorbitrajI18n?.onChange(applyLanguage);
+init();
+</script>
+</body>
+</html>

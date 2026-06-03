@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corbitraj</title>
+<style>
+:root {
+  --bg:      #080d18;
+  --surface: #0f1623;
+  --card:    #161e2e;
+  --border:  #1e293b;
+  --text:    #e2e8f0;
+  --muted:   #64748b;
+  --green:   #10b981;
+  --yellow:  #eab308;
+  --red:     #ef4444;
+  --blue:    #3b82f6;
+  --purple:  #8b5cf6;
+  --cyan:    #06b6d4;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  display: flex; flex-direction: column;
+  height: 100vh; overflow: hidden;
+}
+
+/* ── Overlay ── */
+#overlay {
+  position: fixed; inset: 0; background: var(--bg);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px; z-index: 999;
+}
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#overlay-msg { color: var(--muted); font-size: 14px; }
+
+/* ── Header ── */
+header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.logo {
+  font-size: 16px; font-weight: 800;
+  letter-spacing: -0.5px; color: var(--green);
+  white-space: nowrap;
+}
+.logo span { color: var(--muted); font-weight: 400; font-size: 11px; margin-left: 6px; }
+.stats { display: flex; gap: 18px; flex-wrap: wrap; }
+.stat { display: flex; flex-direction: column; }
+.stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); }
+.stat-value { font-size: 14px; font-weight: 700; font-family: monospace; color: var(--text); }
+.sv-green { color: var(--green); }
+.sv-yellow { color: var(--yellow); }
+.sv-cyan { color: var(--cyan); }
+
+/* ── Exchange bar ── */
+#ex-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 16px;
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  flex-shrink: 0;
+}
+.ex-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 4px; padding: 2px 8px;
+  font-size: 10px; color: var(--muted); font-family: monospace;
+}
+.ex-badge.ok { color: var(--text); border-color: #10b98133; }
+.ex-badge.dex { border-color: #8b5cf633; }
+.ex-badge.dex.ok { border-color: #8b5cf655; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+.dot.ok   { background: var(--green);  box-shadow: 0 0 4px var(--green); }
+.dot.warn { background: var(--yellow); box-shadow: 0 0 4px var(--yellow); }
+.dot.err  { background: var(--red); }
+
+/* ── Symbol bar ── */
+#sym-bar {
+  padding: 4px 16px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 10px; color: var(--muted);
+  font-family: monospace;
+  overflow-x: auto; white-space: nowrap;
+  flex-shrink: 0;
+}
+#sym-bar strong { color: var(--cyan); margin-right: 6px; }
+
+/* ── İki panel ── */
+.panels {
+  display: flex; flex: 1; overflow: hidden;
+  min-height: 0;
+}
+.panel {
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.panel-left  { flex: 0 0 55%; border-right: 2px solid var(--border); overflow: hidden; }
+.panel-right { flex: 1; overflow: hidden; }
+
+.panel-header {
+  padding: 8px 14px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+}
+.panel-title {
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--muted);
+}
+.panel-count { font-size: 10px; color: var(--muted); font-family: monospace; }
+.archive-filter {
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--text); border-radius: 5px;
+  padding: 3px 8px; font-size: 11px; font-family: monospace;
+  outline: none; max-width: 150px;
+}
+.archive-filter:focus { border-color: var(--blue); }
+
+.panel-body { overflow-y: auto; flex: 1; min-height: 0; }
+
+/* ── Tablolar ── */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  font-size: 9px; text-transform: uppercase;
+  letter-spacing: 0.6px; color: var(--muted);
+  padding: 6px 10px; text-align: left;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  position: sticky; top: 0; z-index: 2;
+}
+tbody tr { border-bottom: 1px solid #1e293b44; transition: background 0.1s; }
+tbody tr:hover { background: var(--card) !important; }
+tbody td {
+  padding: 7px 10px;
+  font-family: monospace; font-size: 11px;
+  white-space: nowrap; vertical-align: middle;
+}
+
+/* Tarama renkleri — çift/tek scan_num */
+.s-even { background: rgba(59,130,246,0.07); }   /* mavi ton */
+.s-odd  { background: rgba(16,185,129,0.07); }    /* yeşil ton */
+
+/* Flash */
+@keyframes rowflash {
+  0%   { background: rgba(16,185,129,0.25); }
+  100% { background: transparent; }
+}
+.flash { animation: rowflash 0.7s ease forwards; }
+
+/* Kâr renkleri */
+.p-high { color: var(--green); font-weight: 700; }
+.p-mid  { color: var(--yellow); font-weight: 600; }
+.p-low  { color: #6ee7b7; }
+
+/* Rozetler */
+.badge {
+  display: inline-block; font-size: 9px; font-weight: 700;
+  border-radius: 3px; padding: 1px 5px; font-family: system-ui;
+}
+.b-cex { background: #1d4ed822; color: #60a5fa; border: 1px solid #3b82f630; }
+.b-dex { background: #7c3aed22; color: #c4b5fd; border: 1px solid #8b5cf630; }
+.b-mix { background: #92400e22; color: #fbbf24; border: 1px solid #f59e0b30; }
+
+.empty {
+  text-align: center; padding: 40px;
+  color: var(--muted); font-style: italic; font-family: system-ui;
+}
+.trade-btn {
+  display: inline-block; font-size: 9px; font-weight: 700;
+  border-radius: 3px; padding: 2px 7px; text-decoration: none;
+  font-family: system-ui; cursor: pointer; transition: opacity 0.15s;
+}
+.trade-btn:hover { opacity: 0.7; }
+.btn-buy  { background: #10b98120; color: #10b981; border: 1px solid #10b98140; margin-right: 3px; }
+.btn-sell { background: #f472b620; color: #f472b6; border: 1px solid #f472b640; }
+
+/* API satırı */
+.api-row {
+  display:flex;align-items:center;justify-content:space-between;
+  border:1px solid;border-radius:7px;padding:10px 14px;
+  text-decoration:none;transition:opacity .15s;font-size:13px;color:var(--muted);
+}
+.api-row:hover { opacity: 0.8; }
+
+/* Trade menü linki */
+.trade-link {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #10b98118; border: 1px solid #10b98144;
+  color: var(--green); border-radius: 6px;
+  padding: 4px 14px; font-size: 12px; font-weight: 700;
+  text-decoration: none; letter-spacing: 0.3px;
+  transition: background 0.15s;
+}
+.trade-link:hover { background: #10b98130; }
+
+/* Kaydırma araç çubuğu */
+.scroll-toolbar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  background: var(--surface); border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.scroll-btn {
+  background: var(--card); border: 1px solid var(--border);
+  color: var(--muted); border-radius: 4px;
+  padding: 2px 10px; cursor: pointer; font-size: 13px;
+  transition: background 0.15s;
+}
+.scroll-btn:hover { background: var(--border); color: var(--text); }
+.scroll-label { font-size: 10px; color: var(--muted); }
+
+/* Geçmiş bölümü */
+.history-section {
+  flex-shrink: 0; border-top: 2px solid var(--border);
+  max-height: 220px; overflow-y: auto;
+}
+.history-section summary {
+  padding: 7px 14px; cursor: pointer;
+  font-size: 10px; text-transform: uppercase;
+  letter-spacing: 0.8px; color: var(--muted);
+  background: var(--surface); user-select: none;
+  list-style: none; display: flex; align-items: center; gap: 8px;
+  position: sticky; top: 0; z-index: 2;
+}
+.history-section summary::-webkit-details-marker { display: none; }
+.history-section summary::before { content: '▶'; font-size: 8px; }
+details[open] summary::before { content: '▼'; }
+.hist-count {
+  margin-left: auto; background: #f59e0b22;
+  color: var(--yellow); border: 1px solid #f59e0b33;
+  border-radius: 3px; padding: 1px 6px; font-size: 9px;
+}
+.hist-date-group { padding: 4px 14px 2px; font-size: 9px; color: var(--muted); font-style: italic; }
+.hist-row td { opacity: 0.65; font-size: 10px; }
+</style>
+</head>
+<body>
+<script src="/nav.js?v=5"></script>
+
+<div id="overlay">
+  <div class="spinner"></div>
+  <div id="overlay-msg">Sunucuya bağlanılıyor…</div>
+</div>
+
+<div id="app" style="display:none; flex-direction:column; flex:1; min-height:0; overflow:hidden">
+
+  <!-- Stats bar (logo ve linkler nav.js'den gelir) -->
+  <div style="background:var(--surface);border-bottom:1px solid var(--border);
+              padding:7px 20px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;flex-shrink:0">
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-label">Tarama</span>
+        <span class="stat-value sv-cyan" id="s-scan">#—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Sembol</span>
+        <span class="stat-value" id="s-sym">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Toplam</span>
+        <span class="stat-value sv-yellow" id="s-total">0</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">En Yüksek</span>
+        <span class="stat-value sv-green" id="s-best">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Süre</span>
+        <span class="stat-value" id="s-elapsed">—</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Çalışma</span>
+        <span class="stat-value" id="s-uptime">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Trade Modalı ─────────────────────────────────── -->
+  <div id="trade-modal" onclick="if(event.target===this)closeTrade()" style="
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:800;
+    display:none;align-items:center;justify-content:center">
+    <div style="width:420px;background:var(--surface);border:1px solid var(--border);
+                border-radius:10px;overflow:hidden">
+      <div style="padding:14px 18px;background:var(--card);border-bottom:1px solid var(--border);
+                  display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:700;color:var(--green);font-size:14px">⚡ Trade</span>
+        <button onclick="closeTrade()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <div style="padding:18px;display:flex;flex-direction:column;gap:14px">
+        <div>
+          <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Borsa</label>
+          <select id="td-exchange" style="width:100%;background:var(--card);border:1px solid var(--border);
+            color:var(--text);border-radius:6px;padding:8px 10px;font-size:13px;outline:none">
+            <option value="binance">Binance</option>
+            <option value="bybit">Bybit</option>
+            <option value="kucoin">KuCoin</option>
+            <option value="gateio">Gate.io</option>
+            <option value="mexc">MEXC</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:5px">Sembol</label>
+          <input id="td-symbol" list="td-sym-list" placeholder="BTC/USDT" autocomplete="off"
+            style="width:100%;background:var(--card);border:1px solid var(--border);
+            color:var(--text);border-radius:6px;padding:8px 10px;font-size:13px;font-family:monospace;outline:none">
+          <datalist id="td-sym-list"></datalist>
+        </div>
+        <button onclick="doTrade()" style="background:var(--green);color:#000;font-weight:700;
+          border:none;border-radius:6px;padding:10px;font-size:14px;cursor:pointer;
+          transition:opacity .15s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+          Borsada Aç →
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── API Modalı ──────────────────────────────────── -->
+  <div id="api-modal" onclick="if(event.target===this)closeApiMgr()" style="
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:800;
+    align-items:center;justify-content:center">
+    <div style="width:480px;background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <div style="padding:14px 18px;background:var(--card);border-bottom:1px solid var(--border);
+                  display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:700;color:var(--yellow);font-size:14px">🔑 API Yönetimi</span>
+        <button onclick="closeApiMgr()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:8px">
+        <a href="https://www.binance.com/en/my/settings/api-management" target="_blank" rel="noopener" class="api-row" style="border-color:#f59e0b30;background:#f59e0b12">
+          <span style="font-weight:700;color:#f59e0b">Binance</span>
+          <span>API Anahtarlarını Yönet →</span>
+        </a>
+        <a href="https://www.binance.com/en/my/settings/api-management" target="_blank" rel="noopener" class="api-row" style="border-color:#f0b90b30;background:#f0b90b12">
+          <span style="font-weight:700;color:#f0b90b">Binance TRY</span>
+          <span>API Anahtarlarını Yönet (Binance.com) →</span>
+        </a>
+        <a href="https://www.bybit.com/app/user/api-management" target="_blank" rel="noopener" class="api-row" style="border-color:#f9731630;background:#f9731612">
+          <span style="font-weight:700;color:#f97316">Bybit</span>
+          <span>API Anahtarlarını Yönet →</span>
+        </a>
+        <a href="https://www.kucoin.com/account/api" target="_blank" rel="noopener" class="api-row" style="border-color:#10b98130;background:#10b98112">
+          <span style="font-weight:700;color:#10b981">KuCoin</span>
+          <span>API Anahtarlarını Yönet →</span>
+        </a>
+        <a href="https://www.gate.io/myaccount/apiv4keys" target="_blank" rel="noopener" class="api-row" style="border-color:#3b82f630;background:#3b82f612">
+          <span style="font-weight:700;color:#3b82f6">Gate.io</span>
+          <span>API Anahtarlarını Yönet →</span>
+        </a>
+        <a href="https://www.mexc.com/user/openapi" target="_blank" rel="noopener" class="api-row" style="border-color:#8b5cf630;background:#8b5cf612">
+          <span style="font-weight:700;color:#8b5cf6">MEXC</span>
+          <span>API Anahtarlarını Yönet →</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Pairler Modalı ─────────────────────────────── -->
+  <div id="pairs-modal" onclick="if(event.target===this)closePairs()" style="
+    display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:800;
+    overflow-y:auto;padding:30px 16px">
+    <div style="max-width:980px;margin:0 auto;background:var(--surface);
+                border:1px solid var(--border);border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:12px;
+                  padding:12px 18px;background:var(--card);border-bottom:1px solid var(--border)">
+        <span style="font-weight:700;color:var(--cyan);font-size:14px">📋 Taranan Pairler</span>
+        <span id="pair-modal-count" style="color:var(--muted);font-size:12px">—</span>
+        <input id="pair-search" type="text" placeholder="Filtrele (BTC, /ETH, binance...)"
+          oninput="filterPairs()" style="flex:1;background:var(--bg);border:1px solid var(--border);
+          color:var(--text);border-radius:5px;padding:5px 10px;font-size:12px;font-family:monospace;outline:none">
+        <button onclick="closePairs()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <div id="pairs-table-wrap" style="overflow-x:auto;max-height:72vh;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:600px">
+          <thead>
+            <tr>
+              <th style="font-size:9px;color:var(--muted);padding:6px 14px;text-align:left;
+                background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0">Sembol</th>
+              <th style="font-size:9px;color:var(--muted);padding:6px 14px;text-align:left;
+                background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0">Borsalar</th>
+            </tr>
+          </thead>
+          <tbody id="pairs-tbody">
+            <tr><td colspan="2" style="text-align:center;padding:40px;color:var(--muted);font-style:italic">
+              İlk tarama tamamlanana kadar bekleniyor…
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="ex-bar"></div>
+  <div id="sym-bar"><strong>Yükleniyor…</strong></div>
+
+  <div class="panels">
+
+    <!-- SOL: Güncel tarama + log -->
+    <div class="panel panel-left" style="display:flex;flex-direction:column;overflow:hidden">
+      <div class="panel-header">
+        <span class="panel-title">Güncel Tarama</span>
+        <span class="panel-count" id="cur-count">—</span>
+      </div>
+      <div class="panel-body">
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>Saat</th><th>Sembol</th>
+                <th>AL Borsa</th><th>Alış</th><th>Gross%</th><th>Satış</th><th>SAT Borsa</th>
+                <th>Net%</th><th>Kâr($1K)</th><th>Tür</th>
+              </tr>
+            </thead>
+            <tbody id="cur-tbody">
+              <tr><td class="empty" colspan="11">Tarama bekleniyor…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <!-- Log kutusu -->
+      <div id="log-box" style="
+        flex-shrink:0; height:120px; overflow-y:scroll;
+        overscroll-behavior:contain;
+        border-top:1px solid var(--border);
+        background:#06090f;
+        font-family:monospace; font-size:10px; color:#e2e8f0;
+        padding:6px 12px; display:none;">
+      </div>
+    </div>
+
+    <!-- SAĞ: Fırsat arşivi -->
+    <div class="panel panel-right" style="display:flex;flex-direction:column;overflow:hidden">
+      <div class="panel-header">
+        <span class="panel-title">Fırsat Arşivi</span>
+        <select id="arc-buy-filter" class="archive-filter" onchange="renderArchive()">
+          <option value="">AL: Tümü</option>
+        </select>
+        <span class="panel-count" id="arc-count">0 kayıt</span>
+        <button onclick="clearArchive()" title="Arşivi temizle" style="margin-left:auto;padding:2px 10px;font-size:11px;background:#1e293b;color:#94a3b8;border:1px solid #334155;border-radius:5px;cursor:pointer;" onmouseover="this.style.color='#f87171';this.style.borderColor='#f87171'" onmouseout="this.style.color='#94a3b8';this.style.borderColor='#334155'">Temizle</button>
+      </div>
+      <div class="panel-body" id="arc-body">
+        <div class="tbl-wrap" id="arc-tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th><th>İlk Görüldü</th><th>Sembol</th>
+                <th>AL Borsa</th><th>Alış</th><th>Gross%</th><th>Satış</th><th>SAT Borsa</th>
+                <th>Net%</th><th>Kâr($1K)</th><th>Tür</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="arc-tbody">
+              <tr><td class="empty" colspan="12">Henüz fırsat yok…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Kaydırma araç çubuğu -->
+      <div class="scroll-toolbar">
+        <span class="scroll-label">Yatay kaydır:</span>
+        <button class="scroll-btn" onclick="scrollArc(-200)">◀</button>
+        <button class="scroll-btn" onclick="scrollArc(200)">▶</button>
+        <button class="scroll-btn" onclick="scrollArc(-9999)" title="En başa git">⟨⟨</button>
+        <button class="scroll-btn" onclick="scrollArc(9999)"  title="En sona git">⟩⟩</button>
+      </div>
+
+      <!-- Geçmiş fırsatlar (saat başı arşivden çıkarılanlar) -->
+      <details class="history-section" id="hist-details">
+        <summary>
+          Geçmiş Fırsatlar
+          <span class="hist-count" id="hist-count">0</span>
+        </summary>
+        <div id="hist-body"></div>
+      </details>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Durum ─────────────────────────────────────────────────────
+const MAX_ARCHIVE = 200;
+let totalOpps      = 0;
+let bestProfit     = 0;
+let pendingOpps    = [];
+let currentOpps    = [];
+let currentScan    = 0;
+let lastExpiryHour = new Date().getHours();
+const exState      = {};
+
+// Arşiv: key → {opp, first_seen, scan_num, last_seen_ms}
+const archiveMap  = new Map();
+const archiveData = [];
+
+// Geçmiş: saat başı arşivden çıkarılan fırsatlar
+const historyData = [];  // [{opp, first_seen, scan_num, expired_at}]
+
+// Tüm taranan pairler: [{s:"BTC/USDT", e:["binance","bybit",...]}]
+let allPairs = [];
+const I18N = {
+  tr: {
+    title: 'Corbitraj',
+    connecting: 'Sunucuya bağlanılıyor...',
+    disconnected: 'Bağlantı kesildi, yeniden bağlanılıyor...',
+    scan: 'Tarama',
+    symbol: 'Sembol',
+    total: 'Toplam',
+    best: 'En Yüksek',
+    duration: 'Süre',
+    uptime: 'Çalışma',
+    exchange: 'Borsa',
+    openOnExchange: 'Borsada Aç →',
+    apiManagement: '🔑 API Yönetimi',
+    manageApi: 'API Anahtarlarını Yönet →',
+    manageApiBinance: 'API Anahtarlarını Yönet (Binance.com) →',
+    scannedPairs: '📋 Taranan Pairler',
+    filterPairs: 'Filtrele (BTC, /ETH, binance...)',
+    exchanges: 'Borsalar',
+    waitingFirstScan: 'İlk tarama tamamlanana kadar bekleniyor...',
+    loading: 'Yükleniyor...',
+    currentScan: 'Güncel Tarama',
+    time: 'Saat',
+    buyExchange: 'AL Borsa',
+    buyPrice: 'Alış',
+    sellPrice: 'Satış',
+    sellExchange: 'SAT Borsa',
+    profit: 'Kâr($1K)',
+    type: 'Tür',
+    scanWaiting: 'Tarama bekleniyor...',
+    opportunityArchive: 'Fırsat Arşivi',
+    buyAll: 'AL: Tümü',
+    records: 'kayıt',
+    clear: 'Temizle',
+    clearTitle: 'Arşivi temizle',
+    firstSeen: 'İlk Görüldü',
+    noOpportunities: 'Henüz fırsat yok...',
+    horizontalScroll: 'Yatay kaydır:',
+    startTitle: 'En başa git',
+    endTitle: 'En sona git',
+    history: 'Geçmiş Fırsatlar',
+    noCurrentOpp: 'Bu taramada fırsat bulunamadı',
+    opportunity: 'fırsat',
+    ended: 'Sona Erdi',
+    noArchiveFilter: 'Bu AL borsa filtresine uygun fırsat yok',
+    trade: 'İşlem',
+    scanned: 'Taranan',
+    invalidTrade: 'Geçersiz sembol veya borsa.',
+    noResult: 'Sonuç yok',
+    apiKeyMissing: 'API anahtarı girilmemiş - /api-keys',
+    hourShort: 's',
+    minuteShort: 'd',
+    secondShort: 's',
+  },
+  en: {
+    title: 'Corbitraj',
+    connecting: 'Connecting to server...',
+    disconnected: 'Connection lost, reconnecting...',
+    scan: 'Scan',
+    symbol: 'Symbol',
+    total: 'Total',
+    best: 'Best',
+    duration: 'Duration',
+    uptime: 'Uptime',
+    exchange: 'Exchange',
+    openOnExchange: 'Open on Exchange →',
+    apiManagement: '🔑 API Management',
+    manageApi: 'Manage API Keys →',
+    manageApiBinance: 'Manage API Keys (Binance.com) →',
+    scannedPairs: '📋 Scanned Pairs',
+    filterPairs: 'Filter (BTC, /ETH, binance...)',
+    exchanges: 'Exchanges',
+    waitingFirstScan: 'Waiting for the first scan to complete...',
+    loading: 'Loading...',
+    currentScan: 'Current Scan',
+    time: 'Time',
+    buyExchange: 'BUY Exchange',
+    buyPrice: 'Buy',
+    sellPrice: 'Sell',
+    sellExchange: 'SELL Exchange',
+    profit: 'Profit($1K)',
+    type: 'Type',
+    scanWaiting: 'Waiting for scan...',
+    opportunityArchive: 'Opportunity Archive',
+    buyAll: 'BUY: All',
+    records: 'records',
+    clear: 'Clear',
+    clearTitle: 'Clear archive',
+    firstSeen: 'First Seen',
+    noOpportunities: 'No opportunities yet...',
+    horizontalScroll: 'Horizontal scroll:',
+    startTitle: 'Go to start',
+    endTitle: 'Go to end',
+    history: 'Past Opportunities',
+    noCurrentOpp: 'No opportunities found in this scan',
+    opportunity: 'opportunities',
+    ended: 'Ended',
+    noArchiveFilter: 'No opportunities match this BUY exchange filter',
+    trade: 'Trade',
+    scanned: 'Scanned',
+    invalidTrade: 'Invalid symbol or exchange.',
+    noResult: 'No results',
+    apiKeyMissing: 'API key not entered - /api-keys',
+    hourShort: 'h',
+    minuteShort: 'm',
+    secondShort: 's',
+  },
+};
+
+function lang() {
+  return window.CorbitrajI18n?.getLang?.() || 'en';
+}
+
+function t(key) {
+  return I18N[lang()]?.[key] || I18N.tr[key] || key;
+}
+
+function bt(value) {
+  return window.CorbitrajI18n?.translateBackendText?.(value) || String(value ?? '');
+}
+
+function applyLanguage() {
+  document.documentElement.lang = lang();
+  document.title = t('title');
+  const overlayMsg = document.getElementById('overlay-msg');
+  if (overlayMsg && document.getElementById('app').style.display === 'none') {
+    overlayMsg.textContent = t('connecting');
+  }
+  const statLabels = ['scan', 'symbol', 'total', 'best', 'duration', 'uptime'];
+  document.querySelectorAll('.stat-label').forEach((el, index) => {
+    if (statLabels[index]) el.textContent = t(statLabels[index]);
+  });
+  const tradeLabels = document.querySelectorAll('#trade-modal label');
+  if (tradeLabels[0]) tradeLabels[0].textContent = t('exchange');
+  if (tradeLabels[1]) tradeLabels[1].textContent = t('symbol');
+  const tradeButton = document.querySelector('#trade-modal button[onclick="doTrade()"]');
+  if (tradeButton) tradeButton.textContent = t('openOnExchange');
+  const apiTitle = document.querySelector('#api-modal span[style*="var(--yellow)"]');
+  if (apiTitle) apiTitle.textContent = t('apiManagement');
+  document.querySelectorAll('#api-modal .api-row span:last-child').forEach((el, index) => {
+    el.textContent = index === 1 ? t('manageApiBinance') : t('manageApi');
+  });
+  const pairTitle = document.querySelector('#pairs-modal span[style*="var(--cyan)"]');
+  if (pairTitle) pairTitle.textContent = t('scannedPairs');
+  const pairSearch = document.getElementById('pair-search');
+  if (pairSearch) pairSearch.placeholder = t('filterPairs');
+  const pairHeads = document.querySelectorAll('#pairs-modal thead th');
+  if (pairHeads[0]) pairHeads[0].textContent = t('symbol');
+  if (pairHeads[1]) pairHeads[1].textContent = t('exchanges');
+  const panelTitles = document.querySelectorAll('.panel-title');
+  if (panelTitles[0]) panelTitles[0].textContent = t('currentScan');
+  if (panelTitles[1]) panelTitles[1].textContent = t('opportunityArchive');
+  const clearBtn = document.querySelector('button[onclick="clearArchive()"]');
+  if (clearBtn) {
+    clearBtn.textContent = t('clear');
+    clearBtn.title = t('clearTitle');
+  }
+  document.querySelector('.scroll-label').textContent = t('horizontalScroll');
+  const scrollButtons = document.querySelectorAll('.scroll-btn');
+  if (scrollButtons[2]) scrollButtons[2].title = t('startTitle');
+  if (scrollButtons[3]) scrollButtons[3].title = t('endTitle');
+  const summary = document.querySelector('#hist-details summary');
+  if (summary) summary.childNodes[0].nodeValue = `\n          ${t('history')}\n          `;
+  renderTableHeaders();
+  if (allPairs.length) {
+    renderPairsTable(allPairs);
+  } else {
+    document.getElementById('sym-bar').innerHTML = `<strong>${t('loading')}</strong>`;
+    document.getElementById('pairs-tbody').innerHTML =
+      `<tr><td colspan="2" style="text-align:center;padding:40px;color:var(--muted);font-style:italic">${t('waitingFirstScan')}</td></tr>`;
+  }
+  if (currentScan) {
+    renderCurrent(currentOpps, currentScan);
+  } else {
+    document.getElementById('cur-tbody').innerHTML = `<tr><td class="empty" colspan="11">${t('scanWaiting')}</td></tr>`;
+  }
+  renderArchive();
+  renderHistory();
+}
+
+function renderTableHeaders() {
+  const curHeads = document.querySelectorAll('.panel-left thead th');
+  const curKeys = ['', 'time', 'symbol', 'buyExchange', 'buyPrice', '', 'sellPrice', 'sellExchange', '', 'profit', 'type'];
+  curHeads.forEach((th, index) => { if (curKeys[index]) th.textContent = t(curKeys[index]); });
+  const arcHeads = document.querySelectorAll('#arc-tbl-wrap thead th');
+  const arcKeys = ['', 'firstSeen', 'symbol', 'buyExchange', 'buyPrice', '', 'sellPrice', 'sellExchange', '', 'profit', 'type', ''];
+  arcHeads.forEach((th, index) => { if (arcKeys[index]) th.textContent = t(arcKeys[index]); });
+}
+
+// ── Yardımcılar ───────────────────────────────────────────────
+function n(v, d=4) { return Number(v).toFixed(d); }
+
+// Fiyat için akıllı format: 0.0000001234 → "0.0000001234" (anlamsız sıfır yok)
+function price(v) {
+  const x = Number(v);
+  if (x === 0) return '0';
+  if (x >= 1)  return x.toFixed(4);
+  const exp = Math.floor(Math.log10(Math.abs(x)));
+  return x.toFixed(Math.min(Math.max(6, -exp + 3), 10));
+}
+function uptime(s) {
+  const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=Math.floor(s%60);
+  if(h) return `${h}${t('hourShort')} ${m}${t('minuteShort')}`;
+  if(m) return `${m}${t('minuteShort')} ${sec}${t('secondShort')}`;
+  return `${sec}${t('secondShort')}`;
+}
+function shortEx(name) {
+  return name
+    .replace('binancetr','Binance TRY')
+    .replace('uniswap_v2','uni_v2').replace('pancakeswap_v2','pancake')
+    .replace('@ethereum','@eth').replace('@polygon','@poly').replace('@bsc','@bsc');
+}
+function profitClass(pct) {
+  return pct >= 1.0 ? 'p-high' : pct >= 0.5 ? 'p-mid' : 'p-low';
+}
+function typeBadge(buy, sell) {
+  const bd=buy.includes('@'), sd=sell.includes('@');
+  if(!bd&&!sd) return '<span class="badge b-cex">CEX↔CEX</span>';
+  if(bd&&sd)   return '<span class="badge b-dex">DEX↔DEX</span>';
+  return '<span class="badge b-mix">CEX↔DEX</span>';
+}
+function scanClass(num) { return num%2===0 ? 's-even' : 's-odd'; }
+
+function tradeUrl(exchange, symbol) {
+  const [base, quote] = symbol.split('/');
+  const ex = exchange.split('@')[0];
+  const chain = exchange.includes('@') ? exchange.split('@')[1] : '';
+  const urls = {
+    binance:          `https://www.binance.com/en/trade/${base}_${quote}`,
+    binancetr:        `https://www.binance.com/en/trade/${base}_${quote}`,
+    bybit:            `https://www.bybit.com/en/trade/spot/${base}/${quote}`,
+    kucoin:           `https://www.kucoin.com/trade/${base}-${quote}`,
+    gateio:           `https://www.gate.io/trade/${base}_${quote}`,
+    mexc:             `https://www.mexc.com/exchange/${base}_${quote}`,
+    lbank:            `https://www.lbank.com/trade/${base.toLowerCase()}_${quote.toLowerCase()}`,
+    uniswap_v2:       'https://app.uniswap.org/swap',
+    sushiswap:        chain==='polygon' ? 'https://www.sushi.com/polygon/swap' : 'https://app.sushi.com/swap',
+    pancakeswap_v2:   'https://pancakeswap.finance/swap',
+    biswap:           'https://exchange.biswap.org/#/swap',
+    quickswap:        'https://quickswap.exchange/#/swap',
+  };
+  return urls[ex] || null;
+}
+function flashRow(tr) {
+  tr.classList.remove('flash'); void tr.offsetWidth; tr.classList.add('flash');
+}
+
+// Ortak orta hücreler: AL Borsa | Alış | Gross% | Satış | SAT Borsa | Net% | Kâr | Tür
+function midCells(opp) {
+  const pc = profitClass(opp.net_profit_pct);
+  return `
+    <td style="color:#60a5fa">${shortEx(opp.buy_exchange)}</td>
+    <td>${price(opp.buy_price)}</td>
+    <td style="color:var(--muted)">%${n(opp.gross_spread_pct,2)}</td>
+    <td>${price(opp.sell_price)}</td>
+    <td style="color:#f472b6">${shortEx(opp.sell_exchange)}</td>
+    <td class="${pc}">%${n(opp.net_profit_pct,3)}</td>
+    <td class="${pc}">$${n(opp.estimated_profit_usdt,2)}</td>
+    <td>${typeBadge(opp.buy_exchange, opp.sell_exchange)}</td>`;
+}
+
+// ── Güncel tarama tablosunu yeniden çiz ───────────────────────
+function renderCurrent(opps, scanNum) {
+  const sc = scanClass(scanNum);
+  const tbody = document.getElementById('cur-tbody');
+  tbody.innerHTML = '';
+
+  if (opps.length === 0) {
+    tbody.innerHTML = `<tr><td class="empty" colspan="11">${t('noCurrentOpp')}</td></tr>`;
+    document.getElementById('cur-count').textContent = `#${scanNum} - 0 ${t('opportunity')}`;
+    return;
+  }
+
+  opps.forEach(opp => {
+    const tr = document.createElement('tr');
+    tr.className = sc + ' flash';
+    tr.innerHTML = `
+      <td style="color:var(--muted)">#${scanNum}</td>
+      <td style="color:var(--muted);font-size:10px">${opp.found_at}</td>
+      <td style="font-weight:700">${opp.symbol}</td>
+      ${midCells(opp)}`;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('cur-count').textContent = `#${scanNum} - ${opps.length} ${t('opportunity')}`;
+}
+
+// ── Saatlik geçmiş kontrolü ───────────────────────────────────
+function runHourlyExpiry() {
+  const now  = Date.now();
+  const limit = 55 * 60 * 1000;  // 55 dakika görülmemişse geçmişe taşı
+  const expired_at = new Date().toLocaleString(lang() === 'tr' ? 'tr-TR' : 'en-US');
+
+  const keep = [], expire = [];
+  for (const item of archiveData) {
+    if (now - item.last_seen_ms > limit) expire.push(item);
+    else keep.push(item);
+  }
+
+  if (expire.length === 0) return;
+
+  // Geçmişe taşı
+  expire.forEach(item => {
+    historyData.unshift({ ...item, expired_at });
+    archiveMap.delete(`${item.opp.symbol}:${item.opp.buy_exchange}:${item.opp.sell_exchange}`);
+  });
+
+  // Arşivi güncelle
+  archiveData.length = 0;
+  archiveData.push(...keep);
+  archiveMap.clear();
+  archiveData.forEach((item, i) => {
+    archiveMap.set(`${item.opp.symbol}:${item.opp.buy_exchange}:${item.opp.sell_exchange}`, i);
+  });
+
+  renderArchive();
+  renderHistory();
+}
+
+function renderHistory() {
+  const hist = historyData;
+  document.getElementById('hist-count').textContent = hist.length;
+  const body = document.getElementById('hist-body');
+  if (hist.length === 0) { body.innerHTML = ''; return; }
+
+  // Tarihe göre grupla
+  const groups = {};
+  hist.forEach(item => {
+    const d = item.expired_at.split(' ')[0];
+    (groups[d] = groups[d] || []).push(item);
+  });
+
+  let html = '<table style="width:100%;border-collapse:collapse">';
+  html += `<thead><tr>
+    <th style="font-size:9px;color:var(--muted);padding:5px 10px;text-align:left;background:var(--card);border-bottom:1px solid var(--border)">${t('time')}</th>
+    <th style="font-size:9px;color:var(--muted);padding:5px 10px;text-align:left;background:var(--card);border-bottom:1px solid var(--border)">${t('symbol')}</th>
+    <th style="font-size:9px;color:var(--muted);padding:5px 10px;text-align:left;background:var(--card);border-bottom:1px solid var(--border)">${t('buyExchange')}</th>
+    <th style="font-size:9px;color:var(--muted);padding:5px 10px;text-align:left;background:var(--card);border-bottom:1px solid var(--border)">${t('sellExchange')}</th>
+    <th style="font-size:9px;color:var(--muted);padding:5px 10px;text-align:left;background:var(--card);border-bottom:1px solid var(--border)">Net%</th>
+    <th style="font-size:9px;color:var(--muted);padding:5px 10px;text-align:left;background:var(--card);border-bottom:1px solid var(--border)">${t('ended')}</th>
+  </tr></thead><tbody>`;
+
+  for (const [date, items] of Object.entries(groups)) {
+    html += `<tr><td colspan="6" class="hist-date-group">${date}</td></tr>`;
+    items.forEach(({opp, expired_at}) => {
+      const pc = profitClass(opp.net_profit_pct);
+      html += `<tr class="hist-row" style="border-bottom:1px solid #1e293b33">
+        <td style="padding:5px 10px;font-family:monospace;font-size:10px;color:var(--muted)">${opp.found_at}</td>
+        <td style="padding:5px 10px;font-family:monospace;font-size:10px;font-weight:700">${opp.symbol}</td>
+        <td style="padding:5px 10px;font-family:monospace;font-size:10px;color:#60a5fa">${shortEx(opp.buy_exchange)}</td>
+        <td style="padding:5px 10px;font-family:monospace;font-size:10px;color:#f472b6">${shortEx(opp.sell_exchange)}</td>
+        <td style="padding:5px 10px;font-family:monospace;font-size:10px" class="${pc}">%${n(opp.net_profit_pct,3)}</td>
+        <td style="padding:5px 10px;font-family:monospace;font-size:10px;color:var(--muted)">${expired_at}</td>
+      </tr>`;
+    });
+  }
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+// ── Kaydırma araç çubuğu ─────────────────────────────────────
+function scrollArc(px) {
+  const wrap = document.getElementById('arc-tbl-wrap');
+  wrap.scrollLeft = Math.max(0, wrap.scrollLeft + px);
+}
+
+// ── Arşiv güncelle ve yeniden çiz ────────────────────────────
+function updateArchive(opps, scanNum) {
+  const now = Date.now();
+  for (const opp of opps) {
+    const key = `${opp.symbol}:${opp.buy_exchange}:${opp.sell_exchange}`;
+    if (archiveMap.has(key)) {
+      const idx = archiveMap.get(key);
+      archiveData[idx] = { ...archiveData[idx], opp, scan_num: scanNum, last_seen_ms: now };
+    } else {
+      archiveData.push({ opp, first_seen: opp.found_at, scan_num: scanNum, last_seen_ms: now });
+    }
+  }
+  // Kâra göre büyükten küçüğe sırala
+  archiveData.sort((a,b) => b.opp.net_profit_pct - a.opp.net_profit_pct);
+  // Map yenile
+  archiveMap.clear();
+  archiveData.forEach((item,i) => {
+    const key = `${item.opp.symbol}:${item.opp.buy_exchange}:${item.opp.sell_exchange}`;
+    archiveMap.set(key, i);
+  });
+  // Kırp
+  if (archiveData.length > MAX_ARCHIVE) archiveData.splice(MAX_ARCHIVE);
+
+  renderArchive();
+}
+
+function clearArchive() {
+  archiveData.length = 0;
+  archiveMap.clear();
+  renderArchive();
+}
+
+function updateArchiveBuyFilter() {
+  const select = document.getElementById('arc-buy-filter');
+  if (!select) return '';
+
+  const current = select.value;
+  const exchanges = [...new Set(archiveData.map(item => item.opp.buy_exchange))].sort();
+  select.innerHTML = `<option value="">${t('buyAll')}</option>` +
+    exchanges.map(ex => `<option value="${ex}">${lang() === 'tr' ? 'AL' : 'BUY'}: ${shortEx(ex)}</option>`).join('');
+  if (exchanges.includes(current)) select.value = current;
+  return select.value;
+}
+
+function renderArchive() {
+  const tbody = document.getElementById('arc-tbody');
+  tbody.innerHTML = '';
+  const buyFilter = updateArchiveBuyFilter();
+  const visibleArchive = buyFilter
+    ? archiveData.filter(item => item.opp.buy_exchange === buyFilter)
+    : archiveData;
+
+  if (archiveData.length === 0) {
+    tbody.innerHTML = `<tr><td class="empty" colspan="12">${t('noOpportunities')}</td></tr>`;
+    document.getElementById('arc-count').textContent = `0 ${t('records')}`;
+    return;
+  }
+
+  if (visibleArchive.length === 0) {
+    tbody.innerHTML = `<tr><td class="empty" colspan="12">${t('noArchiveFilter')}</td></tr>`;
+    document.getElementById('arc-count').textContent = `0 / ${archiveData.length} ${t('records')}`;
+    return;
+  }
+
+  visibleArchive.forEach(({opp, first_seen, scan_num}) => {
+    const tr = document.createElement('tr');
+    tr.className = scanClass(scan_num);
+    const trUrl = `/trade?sym=${encodeURIComponent(opp.symbol)}&buy=${encodeURIComponent(opp.buy_exchange)}&sell=${encodeURIComponent(opp.sell_exchange)}`;
+    tr.innerHTML = `
+      <td style="color:var(--muted);font-size:10px">#${scan_num}</td>
+      <td style="color:var(--muted);font-size:10px">${first_seen}</td>
+      <td style="font-weight:700">${opp.symbol}</td>
+      ${midCells(opp)}
+      <td><a href="${trUrl}" target="_blank"
+        style="background:#10b98120;border:1px solid #10b98140;color:#10b981;
+        border-radius:4px;padding:2px 10px;text-decoration:none;font-size:10px;font-weight:700">
+        ${t('trade')}
+      </a></td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('arc-count').textContent = buyFilter
+    ? `${visibleArchive.length} / ${archiveData.length} ${t('records')}`
+    : `${archiveData.length} ${t('records')}`;
+}
+
+// ── Mesaj işleyiciler ─────────────────────────────────────────
+function onSymbolsLoaded(msg) {
+  document.getElementById('s-sym').textContent = msg.count;
+  allPairs = msg.pairs || [];
+  // Datalist güncelle (Trade modalı için)
+  const dl = document.getElementById('td-sym-list');
+  if (dl) dl.innerHTML = allPairs.map(p => `<option value="${p.s}">`).join('');
+  const bar = document.getElementById('sym-bar');
+  const top = allPairs.slice(0,12).map(p=>p.s).join(' · ');
+  bar.innerHTML = `<strong>${t('scanned')} (${msg.count}):</strong> ${top}${allPairs.length>12?' · …':''}`;
+}
+
+// ── Trade Modal ───────────────────────────────────────────────
+function openTrade()  { document.getElementById('trade-modal').style.display = 'flex'; }
+function closeTrade() { document.getElementById('trade-modal').style.display = 'none'; }
+function doTrade() {
+  const ex  = document.getElementById('td-exchange').value;
+  const raw = document.getElementById('td-symbol').value.trim().toUpperCase();
+  const url = tradeUrl(ex, raw) || tradeUrl(ex, raw.replace('/', '/'));
+  if (url) window.open(url, '_blank');
+  else alert(t('invalidTrade'));
+}
+
+// ── API Modal ─────────────────────────────────────────────────
+function openApiMgr()  { document.getElementById('api-modal').style.display = 'flex'; }
+function closeApiMgr() { document.getElementById('api-modal').style.display = 'none'; }
+
+// ── Pairler Modal ─────────────────────────────────────────────
+function openPairs() {
+  document.getElementById('pairs-modal').style.display = 'block';
+  document.getElementById('pair-search').value = '';
+  renderPairsTable(allPairs);
+}
+function closePairs() { document.getElementById('pairs-modal').style.display = 'none'; }
+function filterPairs() {
+  const q = document.getElementById('pair-search').value.trim().toUpperCase();
+  renderPairsTable(q ? allPairs.filter(p =>
+    p.s.includes(q) || p.e.some(e => e.toUpperCase().includes(q))
+  ) : allPairs);
+}
+
+const EX_COLORS = {
+  binance:'#f59e0b', binancetr:'#f0b90b', bybit:'#f97316', kucoin:'#10b981',
+  gateio:'#3b82f6', mexc:'#8b5cf6', default:'#475569'
+};
+const QUOTE_COLORS = {
+  USDT:'#10b981', BTC:'#f59e0b', ETH:'#8b5cf6', BNB:'#f97316',
+  USDC:'#06b6d4', BUSD:'#3b82f6', default:'#64748b'
+};
+
+function renderPairsTable(list) {
+  document.getElementById('pair-modal-count').textContent = list.length + ' pair';
+  const tbody = document.getElementById('pairs-tbody');
+  if (list.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="2" style="text-align:center;padding:30px;color:var(--muted)">${t('noResult')}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(({s, e}) => {
+    const quote = s.split('/')[1] || '';
+    const qc = QUOTE_COLORS[quote] || QUOTE_COLORS.default;
+    const badges = e.map(ex => {
+      const exName = ex.split('@')[0];
+      const c = EX_COLORS[exName] || EX_COLORS.default;
+      return `<span style="background:${c}18;border:1px solid ${c}35;color:${c};
+        border-radius:3px;padding:1px 6px;font-size:10px;white-space:nowrap">${shortEx(ex)}</span>`;
+    }).join(' ');
+    return `<tr style="border-bottom:1px solid #1e293b44">
+      <td style="padding:6px 14px;font-family:monospace;font-size:12px">
+        <span style="background:${qc}15;border:1px solid ${qc}30;color:${qc};
+          border-radius:4px;padding:2px 8px">${s}</span>
+      </td>
+      <td style="padding:6px 14px">${badges}</td>
+    </tr>`;
+  }).join('');
+}
+
+function onScanComplete(msg) {
+  currentScan = msg.scan_count;
+  document.getElementById('s-scan').textContent    = '#' + msg.scan_count;
+  document.getElementById('s-elapsed').textContent = msg.elapsed + 's';
+  document.getElementById('s-uptime').textContent  = uptime(msg.uptime);
+  if (msg.scanned) document.getElementById('s-sym').textContent = msg.scanned;
+
+  // Saat başı kontrol: arşivden düşen fırsatları geçmişe taşı
+  const h = new Date().getHours();
+  if (h !== lastExpiryHour) { lastExpiryHour = h; runHourlyExpiry(); }
+
+  // Log kutusu
+  const logBox = document.getElementById('log-box');
+  const logs = msg.logs || [];
+  if (logs.length > 0) {
+    logBox.style.display = 'block';
+    logBox.innerHTML = logs.map(l => {
+      const isErr = l.includes('[HATA]') || l.includes('hata') || l.includes('ERROR');
+      const col = isErr ? '#f87171' : '#e2e8f0';
+      return `<div style="color:${col};padding:1px 0">${bt(l)}</div>`;
+    }).join('');
+  } else {
+    logBox.style.display = 'none';
+    logBox.innerHTML = '';
+  }
+
+  // pendingOpps zaten sıralı (server tarafından sıralı gönderilir)
+  // Ama UI'da da sırala (güvenlik için)
+  pendingOpps.sort((a,b) => b.net_profit_pct - a.net_profit_pct);
+
+  currentOpps = [...pendingOpps];
+  renderCurrent(currentOpps, msg.scan_count);
+  updateArchive(currentOpps, msg.scan_count);
+  pendingOpps = [];
+}
+
+function onExchangeStatus(msg) {
+  exState[msg.exchange] = { ok: msg.ok, error: msg.error||'', has_key: msg.has_key };
+  const bar = document.getElementById('ex-bar');
+  bar.innerHTML = '';
+  const sorted = Object.keys(exState).sort((a,b) => {
+    const ad=a.includes('@'), bd=b.includes('@');
+    return ad===bd ? a.localeCompare(b) : (ad ? 1 : -1);
+  });
+  for (const name of sorted) {
+    const {ok, error, has_key} = exState[name];
+    const isDex  = name.includes('@');
+    // yeşil: veri OK + API key var | sarı: veri OK + API key yok | kırmızı: veri yok
+    const dotCls = !ok ? 'err' : (has_key ? 'ok' : 'warn');
+    const el = document.createElement('div');
+    el.className = 'ex-badge'+(isDex?' dex':'')+(ok?' ok':'');
+    const tip = bt(error) || (!has_key && ok ? t('apiKeyMissing') : '');
+    if (tip) el.title = tip;
+    el.innerHTML = `<span class="dot ${dotCls}"></span>${shortEx(name)}`;
+    bar.appendChild(el);
+  }
+}
+
+function onOpportunity(opp) {
+  totalOpps++;
+  document.getElementById('s-total').textContent = totalOpps;
+  if (opp.net_profit_pct > bestProfit) {
+    bestProfit = opp.net_profit_pct;
+    document.getElementById('s-best').textContent = '%' + n(bestProfit, 3);
+  }
+  pendingOpps.push(opp);
+}
+
+// ── WebSocket ─────────────────────────────────────────────────
+function connect() {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen = () => {
+    document.getElementById('overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    setInterval(() => { if(ws.readyState===1) ws.send('ping'); }, 20000);
+  };
+  ws.onmessage = ({data}) => {
+    let msg; try { msg=JSON.parse(data); } catch { return; }
+    switch(msg.type) {
+      case 'status':          document.getElementById('overlay-msg').textContent = bt(msg.message); break;
+      case 'symbols_loaded':  onSymbolsLoaded(msg);   break;
+      case 'scan_complete':   onScanComplete(msg);     break;
+      case 'exchange_status': onExchangeStatus(msg);  break;
+      case 'opportunity':     onOpportunity(msg);      break;
+    }
+  };
+  ws.onclose = () => {
+    document.getElementById('overlay').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('overlay-msg').textContent = t('disconnected');
+    setTimeout(connect, 3000);
+  };
+  ws.onerror = () => ws.close();
+}
+window.CorbitrajI18n?.onChange(applyLanguage);
+connect();
+</script>
+</body>
+</html>

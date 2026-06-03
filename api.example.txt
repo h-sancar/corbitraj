@@ -1,0 +1,4 @@
+Do not store real API keys in this repository.
+
+Use .env for local credentials and keep .env ignored by git.
+Use .env.example as the public template.

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corbitraj - API Management</title>
+<style>
+:root{--bg:#080d18;--surface:#0f1623;--card:#161e2e;--border:#1e293b;
+  --text:#e2e8f0;--muted:#64748b;--green:#10b981;--red:#ef4444;
+  --yellow:#eab308;--blue:#3b82f6;--cyan:#06b6d4;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;font-size:13px;min-height:100vh;}
+.main{max-width:800px;margin:28px auto;padding:0 20px;display:flex;flex-direction:column;gap:16px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.card-header{padding:12px 18px;background:var(--card);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-weight:700;font-size:14px;}
+.card-body{padding:18px;display:flex;flex-direction:column;gap:12px;}
+label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+  display:block;margin-bottom:4px;}
+input[type=text],input[type=password]{width:100%;background:var(--card);border:1px solid var(--border);
+  color:var(--text);border-radius:6px;padding:8px 10px;font-size:13px;font-family:monospace;outline:none;}
+input:focus{border-color:var(--blue);}
+.row{display:flex;gap:10px;}
+.row>div{flex:1;}
+.save-btn{background:var(--green);color:#000;border:none;border-radius:6px;
+  padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s;}
+.save-btn:hover{opacity:.85;}
+.test-btn{background:var(--blue)18;border:1px solid var(--blue)40;color:var(--blue);
+  border-radius:6px;padding:9px 16px;font-size:13px;cursor:pointer;font-weight:600;}
+.test-btn:hover{background:var(--blue)30;}
+.status{display:inline-block;font-size:11px;border-radius:4px;padding:3px 10px;font-weight:600;}
+.status.ok{background:var(--green)18;color:var(--green);border:1px solid var(--green)30;}
+.status.err{background:var(--red)18;color:var(--red);border:1px solid var(--red)30;}
+.status.idle{background:var(--muted)18;color:var(--muted);border:1px solid var(--muted)30;}
+.info{background:#1e293b;border-radius:6px;padding:10px 14px;font-size:11px;color:var(--muted);line-height:1.6;}
+.info b{color:var(--text);}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--border);
+  border-radius:8px;padding:12px 18px;font-size:13px;z-index:99;display:none;max-width:320px;}
+.toast.ok{border-color:var(--green)60;color:var(--green);}
+.toast.err{border-color:var(--red)60;color:var(--red);}
+</style>
+</head>
+<body>
+<script src="/nav.js?v=5"></script>
+
+<div class="main">
+
+  <div class="info" id="api-info">
+    <b>API anahtarları sadece bu tarayıcıda (localStorage) saklanır.</b><br>
+    Sunucuya gönderilmez — sadece "Test Et" butonuna basıldığında o borsa sorgulanır.
+    Gerçek işlem yapmak için <b>config.py</b>'de <b>DRY_RUN = False</b> yapın ve anahtarları
+    <b>.env</b> dosyasına ekleyin.
+  </div>
+
+  <div id="ex-cards"></div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const EXCHANGES = [
+  {id:'binance',  name:'Binance',     color:'#f59e0b'},
+  {id:'binancetr',name:'Binance TRY', color:'#f0b90b'},
+  {id:'bybit',    name:'Bybit',       color:'#f97316'},
+  {id:'bybiteu',  name:'Bybit EU',    color:'#fb923c'},
+  {id:'kraken',   name:'Kraken',     color:'#4f46e5'},
+  {id:'okx',      name:'OKX',        color:'#06b6d4', passphrase:true},
+  {id:'bitget',   name:'Bitget',     color:'#10b981', passphrase:true},
+  {id:'kucoin',   name:'KuCoin',     color:'#22c55e', passphrase:true},
+  {id:'gateio',   name:'Gate.io',    color:'#3b82f6'},
+  {id:'mexc',     name:'MEXC',       color:'#8b5cf6'},
+  {id:'htx',      name:'HTX (Huobi)',color:'#ef4444'},
+  {id:'cryptocom',name:'Crypto.com', color:'#0ea5e9'},
+  {id:'whitebit', name:'WhiteBit',   color:'#a855f7'},
+  {id:'bingx',    name:'BingX',      color:'#f59e0b'},
+  {id:'bitmart',  name:'BitMart',    color:'#ec4899'},
+  {id:'poloniex', name:'Poloniex',   color:'#14b8a6'},
+  {id:'bitfinex', name:'Bitfinex',   color:'#84cc16'},
+  {id:'lbank',    name:'LBank',      color:'#fb923c'},
+  {id:'upbit',    name:'Upbit',      color:'#60a5fa'},
+  {id:'bitstamp', name:'Bitstamp',   color:'#34d399'},
+  {id:'gemini',   name:'Gemini',     color:'#c084fc'},
+  {id:'coinbase', name:'Coinbase',   color:'#2563eb'},
+  {id:'paribu',   name:'Paribu (TRY)',color:'#f43f5e'},
+  {id:'btcturk',  name:'BtcTürk (TRY)',color:'#dc2626'},
+  {id:'bithumb',  name:'Bithumb (KRW)',color:'#d97706'},
+];
+const I18N = {
+  tr: {
+    title: 'Corbitraj - API Yönetimi',
+    infoHtml: '<b>API anahtarları sadece bu tarayıcıda (localStorage) saklanır.</b><br>Sunucuya gönderilmez - sadece "Test Et" butonuna basıldığında o borsa sorgulanır. Gerçek işlem yapmak için <b>config.py</b>\'de <b>DRY_RUN = False</b> yapın ve anahtarları <b>.env</b> dosyasına ekleyin.',
+    statusIdle: 'Test edilmedi',
+    apiKeyPlaceholder: 'API anahtarı',
+    secretPlaceholder: 'Secret',
+    test: 'Test Et',
+    save: 'Kaydet (.env)',
+    testing: 'Test ediliyor...',
+    keyMissing: '✗ Key yüklenmemiş - önce kaydedin',
+    assets: 'varlık',
+    saved: 'anahtarları .env\'e kaydedildi',
+    error: 'Hata',
+  },
+  en: {
+    title: 'Corbitraj - API Management',
+    infoHtml: '<b>API keys are stored only in this browser (localStorage).</b><br>They are not sent to the server except when you click "Test". To place real orders, set <b>DRY_RUN = False</b> in <b>config.py</b> and add the keys to your <b>.env</b> file.',
+    statusIdle: 'Not tested',
+    apiKeyPlaceholder: 'API key',
+    secretPlaceholder: 'Secret',
+    test: 'Test',
+    save: 'Save (.env)',
+    testing: 'Testing...',
+    keyMissing: '✗ Key not loaded - save it first',
+    assets: 'assets',
+    saved: 'keys saved to .env',
+    error: 'Error',
+  },
+};
+
+function lang() {
+  return window.CorbitrajI18n?.getLang?.() || 'en';
+}
+
+function t(key) {
+  return I18N[lang()]?.[key] || I18N.tr[key] || key;
+}
+
+function bt(value) {
+  return window.CorbitrajI18n?.translateBackendText?.(value) || String(value ?? '');
+}
+
+function applyLanguage() {
+  document.documentElement.lang = lang();
+  document.title = t('title');
+  document.getElementById('api-info').innerHTML = t('infoHtml');
+  document.querySelectorAll('.status.idle').forEach(el => { el.textContent = t('statusIdle'); });
+  document.querySelectorAll('.api-key-input').forEach(el => { el.placeholder = t('apiKeyPlaceholder'); });
+  document.querySelectorAll('.secret-input').forEach(el => { el.placeholder = t('secretPlaceholder'); });
+  document.querySelectorAll('.test-btn').forEach(el => { el.textContent = t('test'); });
+  document.querySelectorAll('.save-btn').forEach(el => { el.textContent = t('save'); });
+}
+
+// Kartları oluştur
+const container = document.getElementById('ex-cards');
+EXCHANGES.forEach(ex => {
+  const pp = ex.passphrase ? `<div><label>Passphrase</label><input type="password" id="${ex.id}-passphrase" placeholder="Passphrase"></div>` : '';
+  container.innerHTML += `
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title" style="color:${ex.color}">${ex.name}</span>
+      <span class="status idle" id="status-${ex.id}">Test edilmedi</span>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div><label>API Key</label><input class="api-key-input" type="text" id="${ex.id}-key" placeholder="API anahtarı"></div>
+        <div><label>Secret</label><input class="secret-input" type="password" id="${ex.id}-secret" placeholder="Secret"></div>
+      </div>
+      ${pp}
+      <div style="display:flex;gap:10px">
+        <button class="test-btn" onclick="testApi('${ex.id}')">Test Et</button>
+        <button class="save-btn" onclick="saveKeys('${ex.id}')">Kaydet (.env)</button>
+      </div>
+    </div>
+  </div>`;
+});
+
+// Kaydedilen anahtarları yükle
+EXCHANGES.forEach(ex => {
+  const k = localStorage.getItem(`${ex.id}_key`);
+  const s = localStorage.getItem(`${ex.id}_secret`);
+  const p = localStorage.getItem(`${ex.id}_passphrase`);
+  if(k && document.getElementById(`${ex.id}-key`))       document.getElementById(`${ex.id}-key`).value = k;
+  if(s && document.getElementById(`${ex.id}-secret`))    document.getElementById(`${ex.id}-secret`).value = s;
+  if(p && document.getElementById(`${ex.id}-passphrase`))document.getElementById(`${ex.id}-passphrase`).value = p;
+});
+
+function setStatus(ex, state, msg) {
+  const el = document.getElementById(`status-${ex}`);
+  el.className = `status ${state}`;
+  el.textContent = msg;
+}
+
+async function testApi(ex) {
+  setStatus(ex, 'idle', t('testing'));
+
+  // Önce key'in yüklü olduğunu doğrula
+  const kr = await fetch(`/api/test-key?exchange=${ex}`);
+  const kd = await kr.json();
+  if(!kd.has_key) {
+    setStatus(ex, 'err', t('keyMissing'));
+    return;
+  }
+
+  // Bakiye çek
+  const r = await fetch(`/api/balance?exchange=${ex}`);
+  const d = await r.json();
+  if(d.error) {
+    // Tam hata mesajını göster
+    const short = bt(d.error).slice(0, 80);
+    setStatus(ex, 'err', `✗ ${short}`);
+    // Konsola detay yaz
+    console.error(`[${ex}] ${d.error}`);
+    toast(`${ex}: ${bt(d.error)}`, 'err');
+  } else {
+    const coins = Object.keys(d.free||{}).length;
+    setStatus(ex, 'ok', `✓ ${coins} ${t('assets')} (key: ${kd.key_preview})`);
+  }
+}
+
+function saveKeys(ex) {
+  const key = document.getElementById(`${ex}-key`).value.trim();
+  const sec = document.getElementById(`${ex}-secret`).value.trim();
+  const pp  = document.getElementById(`${ex}-passphrase`);
+  localStorage.setItem(`${ex}_key`, key);
+  localStorage.setItem(`${ex}_secret`, sec);
+  if(pp) localStorage.setItem(`${ex}_passphrase`, pp.value.trim());
+
+  // .env dosyasına yaz
+  fetch('/api/save-env', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({exchange: ex, key, secret: sec,
+      passphrase: pp ? pp.value.trim() : ''})
+  }).then(r=>r.json()).then(d=>{
+    if(d.ok) toast(`${ex} ${t('saved')}`, 'ok');
+    else toast(bt(d.error)||t('error'), 'err');
+  });
+}
+
+let toastTimer;
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className='toast '+type; el.style.display='block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.style.display='none', 4000);
+}
+
+window.CorbitrajI18n?.onChange(applyLanguage);
+applyLanguage();
+</script>
+</body>
+</html>

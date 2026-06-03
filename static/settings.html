@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corbitraj - Settings</title>
+<style>
+:root{--bg:#080d18;--surface:#0f1623;--card:#161e2e;--border:#1e293b;
+  --text:#e2e8f0;--muted:#64748b;--green:#10b981;--red:#ef4444;
+  --yellow:#eab308;--blue:#3b82f6;--cyan:#06b6d4;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;
+  font-size:13px;min-height:100vh;}
+.main{max-width:680px;margin:28px auto;padding:0 20px;display:flex;flex-direction:column;gap:16px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.card-header{padding:12px 18px;background:var(--card);border-bottom:1px solid var(--border);}
+.card-title{font-weight:700;font-size:15px;}
+.card-desc{font-size:11px;color:var(--muted);margin-top:3px;}
+.card-body{padding:18px;display:flex;flex-direction:column;gap:14px;}
+.setting-row{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 0;border-bottom:1px solid var(--border)44;}
+.setting-row:last-child{border:none;padding-bottom:0;}
+.setting-label{font-size:13px;font-weight:600;}
+.setting-hint{font-size:11px;color:var(--muted);margin-top:3px;}
+.language-row{display:flex;align-items:center;justify-content:space-between;gap:14px;}
+.language-select{max-width:180px;font-family:system-ui,sans-serif;}
+/* Toggle switch */
+.toggle{position:relative;width:52px;height:28px;cursor:pointer;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;position:absolute;}
+.toggle-track{
+  position:absolute;inset:0;border-radius:14px;
+  background:var(--border);transition:background .2s;
+}
+.toggle input:checked + .toggle-track{background:var(--green);}
+.toggle-thumb{
+  position:absolute;top:4px;left:4px;width:20px;height:20px;
+  border-radius:50%;background:#fff;transition:transform .2s;
+  box-shadow:0 1px 4px #0004;
+}
+.toggle input:checked ~ .toggle-thumb{transform:translateX(24px);}
+.status-badge{
+  display:inline-block;font-size:11px;font-weight:700;
+  border-radius:4px;padding:3px 10px;
+}
+.badge-on{ background:var(--green)18;color:var(--green);border:1px solid var(--green)30;}
+.badge-off{background:var(--red)18;  color:var(--red);  border:1px solid var(--red)30;}
+label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+  display:block;margin-bottom:4px;}
+input[type=number],input[type=text],select{width:100%;background:var(--card);border:1px solid var(--border);
+  color:var(--text);border-radius:6px;padding:8px 10px;font-size:13px;
+  font-family:monospace;outline:none;}
+input:focus,select:focus{border-color:var(--blue);}
+.exclude-form{display:grid;grid-template-columns:1fr 1.6fr auto;gap:12px;align-items:end;}
+.exchange-picker{background:var(--card);border:1px solid var(--border);border-radius:6px;
+  max-height:170px;overflow-y:auto;padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;}
+.exchange-check{display:flex;align-items:center;gap:7px;margin:0;padding:4px 6px;border-radius:4px;
+  color:var(--text);font-size:11px;text-transform:none;letter-spacing:0;cursor:pointer;}
+.exchange-check:hover{background:#1e293b80;}
+.exchange-check input{accent-color:var(--blue);}
+.mini-actions{display:flex;gap:6px;align-items:center;justify-content:space-between;margin-bottom:4px;}
+.mini-btn{background:var(--card);color:var(--muted);border:1px solid var(--border);border-radius:5px;
+  padding:3px 7px;font-size:11px;cursor:pointer;}
+.mini-btn:hover{color:var(--text);border-color:var(--blue);}
+.excluded-list{display:flex;flex-direction:column;gap:7px;}
+.excluded-item{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:var(--card);border:1px solid var(--border);border-radius:6px;padding:9px 10px;}
+.excluded-symbol{font-family:monospace;font-weight:700;color:var(--cyan);}
+.excluded-exchanges{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;}
+.pill{display:inline-block;border:1px solid #3b82f640;background:#3b82f618;color:#93c5fd;
+  border-radius:4px;padding:2px 6px;font-size:10px;font-family:monospace;}
+.delete-btn{background:#ef444418;color:var(--red);border:1px solid #ef444440;border-radius:5px;
+  padding:5px 9px;font-size:12px;cursor:pointer;}
+.empty-list{color:var(--muted);font-size:12px;font-style:italic;padding:4px 0;}
+@media (max-width:720px){.exclude-form{grid-template-columns:1fr}.exchange-picker{grid-template-columns:1fr}}
+.save-btn{background:var(--blue);color:#fff;border:none;border-radius:6px;
+  padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;}
+.save-btn:hover{opacity:.85;}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--card);
+  border:1px solid var(--border);border-radius:8px;padding:12px 18px;
+  font-size:13px;z-index:99;display:none;}
+.toast.ok{border-color:var(--green)60;color:var(--green);}
+.toast.err{border-color:var(--red)60;color:var(--red);}
+</style>
+</head>
+<body>
+<script src="/nav.js?v=5"></script>
+
+<div class="main">
+
+  <!-- DRY RUN -->
+  <div class="card" id="mode-card">
+    <div class="card-header">
+      <div class="card-title">İşlem Modu</div>
+      <div class="card-desc">Gerçek emir gönderilip gönderilmeyeceğini kontrol eder</div>
+    </div>
+    <div class="card-body">
+      <div class="setting-row">
+        <div>
+          <div class="setting-label">DRY RUN (Kuru Çalışma)</div>
+          <div class="setting-hint">
+            <b>Açık:</b> Fırsatlar gösterilir, gerçek emir gönderilmez.<br>
+            <b>Kapalı:</b> API anahtarı olan borsalarda gerçek emir gönderilir.
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span class="status-badge" id="dry-badge">—</span>
+          <label class="toggle">
+            <input type="checkbox" id="dry-toggle" onchange="setDryRun(this.checked)">
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dil -->
+  <div class="card" id="language-card">
+    <div class="card-header">
+      <div class="card-title">Dil</div>
+      <div class="card-desc">Arayüz dilini seçin</div>
+    </div>
+    <div class="card-body">
+      <div class="language-row">
+        <div>
+          <div class="setting-label">Arayüz Dili</div>
+          <div class="setting-hint">Türkçe veya İngilizce.</div>
+        </div>
+        <select id="language-select" class="language-select" onchange="setLanguage(this.value)">
+          <option value="tr">Türkçe</option>
+          <option value="en">English</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tarama Parametreleri -->
+  <div class="card" id="params-card">
+    <div class="card-header">
+      <div class="card-title">Tarama Parametreleri</div>
+    </div>
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div>
+          <label>Tarama Aralığı (saniye)</label>
+          <input type="number" id="scan-interval" min="5" max="3600" step="1">
+        </div>
+        <div>
+          <label>Minimum Kâr (%)</label>
+          <input type="number" id="min-profit" min="0.1" max="20" step="0.1">
+        </div>
+        <div>
+          <label>Maksimum Spread (%)</label>
+          <input type="number" id="max-spread" min="1" max="50" step="0.5">
+        </div>
+        <div>
+          <label>Min. Pair Hacmi ($)</label>
+          <input type="number" id="min-volume" min="0" step="1000">
+        </div>
+        <div>
+          <label>İşlem Büyüklüğü ($)</label>
+          <input type="number" id="trade-amount" min="10" step="10">
+        </div>
+        <div>
+          <label>Min. DEX Likiditesi ($)</label>
+          <input type="number" id="min-dex-liq" min="0" step="1000">
+        </div>
+      </div>
+      <button class="save-btn" onclick="saveParams()">Kaydet</button>
+    </div>
+  </div>
+
+  <!-- Hariç Tutulacak Pairler -->
+  <div class="card" id="excluded-card">
+    <div class="card-header">
+      <div class="card-title">Hariç Tutulacak Pairler</div>
+      <div class="card-desc">Eklenen pairler sadece seçilen borsalarda tarama dışı bırakılır</div>
+    </div>
+    <div class="card-body">
+      <div class="exclude-form">
+        <div>
+          <label>Pair</label>
+          <select id="exclude-symbol" onchange="renderExchangePicker()">
+            <option value="">Pair listesi yükleniyor...</option>
+          </select>
+        </div>
+        <div>
+          <div class="mini-actions">
+            <label style="margin:0">Borsalar</label>
+            <div>
+              <button type="button" class="mini-btn" onclick="selectAllSources()">Tümü</button>
+              <button type="button" class="mini-btn" onclick="clearSources()">Temizle</button>
+            </div>
+          </div>
+          <div id="exclude-exchanges" class="exchange-picker"></div>
+        </div>
+        <button class="save-btn" onclick="addExcludedPair()">Ekle</button>
+      </div>
+      <div id="excluded-list" class="excluded-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let scanSources = [];
+let scanPairs = [];
+let excludedPairs = [];
+let pairRefreshTimer;
+const LANG_KEY = 'corbitraj_lang_v2';
+
+const I18N = {
+  tr: {
+    pageTitle: 'Corbitraj - Ayarlar',
+    modeTitle: 'İşlem Modu',
+    modeDesc: 'Gerçek emir gönderilip gönderilmeyeceğini kontrol eder',
+    dryLabel: 'DRY RUN (Kuru Çalışma)',
+    dryHint: '<b>Açık:</b> Fırsatlar gösterilir, gerçek emir gönderilmez.<br><b>Kapalı:</b> API anahtarı olan borsalarda gerçek emir gönderilir.',
+    dryOn: 'KURU ÇALIŞMA',
+    dryOff: 'GERÇEK İŞLEM',
+    languageTitle: 'Dil',
+    languageDesc: 'Arayüz dilini seçin',
+    languageLabel: 'Arayüz Dili',
+    languageHint: 'Türkçe veya İngilizce.',
+    languageSaved: 'Dil kaydedildi',
+    languageSaveError: 'Dil kaydedilemedi',
+    paramsTitle: 'Tarama Parametreleri',
+    scanInterval: 'Tarama Aralığı (saniye)',
+    minProfit: 'Minimum Kâr (%)',
+    maxSpread: 'Maksimum Spread (%)',
+    minVolume: 'Min. Pair Hacmi ($)',
+    tradeAmount: 'İşlem Büyüklüğü ($)',
+    minDexLiq: 'Min. DEX Likiditesi ($)',
+    save: 'Kaydet',
+    settingsSaved: 'Ayarlar kaydedildi',
+    excludedTitle: 'Hariç Tutulacak Pairler',
+    excludedDesc: 'Eklenen pairler sadece seçilen borsalarda tarama dışı bırakılır',
+    pairLabel: 'Pair',
+    exchangesLabel: 'Borsalar',
+    all: 'Tümü',
+    clear: 'Temizle',
+    add: 'Ekle',
+    scanWaiting: 'İlk tarama bekleniyor...',
+    choosePair: 'Pair seçin',
+    choosePairFirst: 'Önce listeden pair seçin.',
+    noExchangeForPair: 'Bu pair için taranan borsa bulunamadı.',
+    choosePairToast: 'Listeden pair seçin',
+    chooseExchangeToast: 'En az bir borsa seçin',
+    excludedSaved: 'Hariç liste kaydedildi',
+    excludedEmpty: 'Henüz hariç tutulacak pair eklenmedi.',
+    delete: 'Sil',
+    dryRunOnToast: 'DRY_RUN açıldı - emir gönderilmez',
+    liveModeToast: 'GERÇEK İŞLEM modu aktif!',
+    error: 'Hata',
+  },
+  en: {
+    pageTitle: 'Corbitraj - Settings',
+    modeTitle: 'Trading Mode',
+    modeDesc: 'Controls whether real orders are submitted',
+    dryLabel: 'DRY RUN',
+    dryHint: '<b>On:</b> Opportunities are shown, real orders are not sent.<br><b>Off:</b> Real orders are sent on exchanges with API keys.',
+    dryOn: 'DRY RUN',
+    dryOff: 'LIVE TRADING',
+    languageTitle: 'Language',
+    languageDesc: 'Choose the interface language',
+    languageLabel: 'Interface Language',
+    languageHint: 'Turkish or English.',
+    languageSaved: 'Language saved',
+    languageSaveError: 'Language could not be saved',
+    paramsTitle: 'Scan Parameters',
+    scanInterval: 'Scan Interval (seconds)',
+    minProfit: 'Minimum Profit (%)',
+    maxSpread: 'Maximum Spread (%)',
+    minVolume: 'Min. Pair Volume ($)',
+    tradeAmount: 'Trade Size ($)',
+    minDexLiq: 'Min. DEX Liquidity ($)',
+    save: 'Save',
+    settingsSaved: 'Settings saved',
+    excludedTitle: 'Excluded Pairs',
+    excludedDesc: 'Added pairs are skipped only on the selected exchanges',
+    pairLabel: 'Pair',
+    exchangesLabel: 'Exchanges',
+    all: 'All',
+    clear: 'Clear',
+    add: 'Add',
+    scanWaiting: 'Waiting for first scan...',
+    choosePair: 'Choose pair',
+    choosePairFirst: 'Choose a pair from the list first.',
+    noExchangeForPair: 'No scanned exchange found for this pair.',
+    choosePairToast: 'Choose a pair from the list',
+    chooseExchangeToast: 'Choose at least one exchange',
+    excludedSaved: 'Excluded list saved',
+    excludedEmpty: 'No excluded pairs added yet.',
+    delete: 'Delete',
+    dryRunOnToast: 'DRY_RUN enabled - orders will not be sent',
+    liveModeToast: 'LIVE TRADING mode is active!',
+    error: 'Error',
+  },
+};
+
+function normalizeLanguage(lang) {
+  return lang === 'tr' ? 'tr' : 'en';
+}
+
+function storedLanguage() {
+  const lang = localStorage.getItem(LANG_KEY);
+  return lang === 'tr' || lang === 'en' ? lang : '';
+}
+
+function currentLanguage() {
+  return normalizeLanguage(localStorage.getItem(LANG_KEY));
+}
+
+function t(key) {
+  const lang = currentLanguage();
+  return I18N[lang][key] || I18N.tr[key] || key;
+}
+
+function bt(value) {
+  return window.CorbitrajI18n?.translateBackendText?.(value) || String(value ?? '');
+}
+
+function setText(selector, key, html=false) {
+  const el = document.querySelector(selector);
+  if (!el) return;
+  if (html) el.innerHTML = t(key);
+  else el.textContent = t(key);
+}
+
+function updateDryBadge(dry) {
+  const badge = document.getElementById('dry-badge');
+  if (!badge) return;
+  badge.textContent = dry ? t('dryOn') : t('dryOff');
+  badge.className = 'status-badge ' + (dry ? 'badge-on' : 'badge-off');
+}
+
+function applyLanguage(lang, syncNav=true) {
+  const normalized = normalizeLanguage(lang);
+  localStorage.setItem(LANG_KEY, normalized);
+  document.documentElement.lang = normalized;
+  document.title = t('pageTitle');
+
+  const select = document.getElementById('language-select');
+  if (select) select.value = normalized;
+
+  setText('#mode-card .card-title', 'modeTitle');
+  setText('#mode-card .card-desc', 'modeDesc');
+  setText('#mode-card .setting-label', 'dryLabel');
+  setText('#mode-card .setting-hint', 'dryHint', true);
+
+  setText('#language-card .card-title', 'languageTitle');
+  setText('#language-card .card-desc', 'languageDesc');
+  setText('#language-card .setting-label', 'languageLabel');
+  setText('#language-card .setting-hint', 'languageHint');
+
+  setText('#params-card .card-title', 'paramsTitle');
+  const paramLabels = ['scanInterval', 'minProfit', 'maxSpread', 'minVolume', 'tradeAmount', 'minDexLiq'];
+  document.querySelectorAll('#params-card label').forEach((label, index) => {
+    if (paramLabels[index]) label.textContent = t(paramLabels[index]);
+  });
+  setText('#params-card .save-btn', 'save');
+
+  setText('#excluded-card .card-title', 'excludedTitle');
+  setText('#excluded-card .card-desc', 'excludedDesc');
+  setText('#excluded-card .exclude-form > div:first-child label', 'pairLabel');
+  setText('#excluded-card .mini-actions label', 'exchangesLabel');
+  setText('#excluded-card .mini-actions .mini-btn:first-of-type', 'all');
+  setText('#excluded-card .mini-actions .mini-btn:last-of-type', 'clear');
+  setText('#excluded-card .exclude-form > .save-btn', 'add');
+
+  updateDryBadge(document.getElementById('dry-toggle')?.checked);
+  if (document.getElementById('exclude-symbol')) renderPairSelect();
+  if (document.getElementById('excluded-list')) renderExcludedPairs();
+  if (syncNav && window.CorbitrajI18n) window.CorbitrajI18n.setLang(normalized);
+}
+
+async function setLanguage(lang) {
+  const normalized = normalizeLanguage(lang);
+  applyLanguage(normalized);
+  try {
+    const r = await fetch('/api/settings', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({LANGUAGE: normalized})
+    });
+    const d = await r.json();
+    toast(d.ok ? t('languageSaved') : (bt(d.error) || t('error')), d.ok ? 'ok' : 'err');
+  } catch(e) {
+    toast(t('languageSaveError'), 'err');
+  }
+}
+
+async function loadSettings() {
+  const r = await fetch('/api/settings');
+  const d = await r.json();
+  applyLanguage(storedLanguage() || d.LANGUAGE || 'en');
+  const dry = d.DRY_RUN;
+  document.getElementById('dry-toggle').checked = dry;
+  updateDryBadge(dry);
+  document.getElementById('scan-interval').value = d.SCAN_INTERVAL;
+  document.getElementById('min-profit').value    = d.MIN_PROFIT_PCT;
+  document.getElementById('max-spread').value    = d.MAX_SPREAD_PCT;
+  document.getElementById('min-volume').value    = d.MIN_PAIR_VOLUME_USD;
+  document.getElementById('trade-amount').value  = d.TRADE_AMOUNT_USDT;
+  document.getElementById('min-dex-liq').value   = d.MIN_DEX_LIQUIDITY_USD;
+  excludedPairs = d.EXCLUDED_PAIRS || [];
+  renderExcludedPairs();
+}
+
+async function setDryRun(val) {
+  const r = await fetch('/api/settings', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({DRY_RUN: val})
+  });
+  const d = await r.json();
+  if(d.ok) {
+    updateDryBadge(val);
+    toast(val ? t('dryRunOnToast') : t('liveModeToast'), val ? 'ok' : 'err');
+  } else {
+    toast(bt(d.error) || t('error'), 'err');
+    document.getElementById('dry-toggle').checked = !val;
+  }
+}
+
+async function saveParams() {
+  const body = {
+    SCAN_INTERVAL:       parseInt(document.getElementById('scan-interval').value),
+    MIN_PROFIT_PCT:      parseFloat(document.getElementById('min-profit').value),
+    MAX_SPREAD_PCT:      parseFloat(document.getElementById('max-spread').value),
+    MIN_PAIR_VOLUME_USD: parseInt(document.getElementById('min-volume').value),
+    TRADE_AMOUNT_USDT:   parseFloat(document.getElementById('trade-amount').value),
+    MIN_DEX_LIQUIDITY_USD: parseInt(document.getElementById('min-dex-liq').value),
+  };
+  const r = await fetch('/api/settings', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  toast(d.ok ? t('settingsSaved') : (bt(d.error) || t('error')), d.ok ? 'ok' : 'err');
+}
+
+async function loadScanSources() {
+  try {
+    const r = await fetch('/api/scan-sources');
+    const d = await r.json();
+    scanSources = d.sources || [];
+  } catch(e) {
+    scanSources = [];
+  }
+  renderExchangePicker();
+}
+
+async function loadScanPairs() {
+  try {
+    const r = await fetch('/api/pairs');
+    const d = await r.json();
+    scanPairs = d.pairs || [];
+    renderPairSelect();
+  } catch(e) {
+    scanPairs = [];
+    renderPairSelect();
+  }
+  clearTimeout(pairRefreshTimer);
+  pairRefreshTimer = setTimeout(loadScanPairs, 10000);
+}
+
+function pairExchangeMap() {
+  const map = new Map();
+  for (const pair of scanPairs) {
+    if (!pair.s) continue;
+    const existing = map.get(pair.s) || [];
+    map.set(pair.s, [...new Set([...existing, ...(pair.e || [])])].sort());
+  }
+  return map;
+}
+
+function renderPairSelect() {
+  const select = document.getElementById('exclude-symbol');
+  const current = select.value;
+  const pairs = [...pairExchangeMap().keys()].sort();
+  if (!pairs.length) {
+    select.disabled = true;
+    select.innerHTML = `<option value="">${esc(t('scanWaiting'))}</option>`;
+  } else {
+    select.disabled = false;
+    select.innerHTML = `<option value="">${esc(t('choosePair'))}</option>` +
+      pairs.map(symbol => `<option value="${esc(symbol)}">${esc(symbol)}</option>`).join('');
+    if (pairs.includes(current)) select.value = current;
+  }
+  renderExchangePicker();
+}
+
+function renderExchangePicker() {
+  const box = document.getElementById('exclude-exchanges');
+  const symbol = document.getElementById('exclude-symbol').value;
+  if (!symbol) {
+    box.innerHTML = `<div class="empty-list">${esc(t('choosePairFirst'))}</div>`;
+    return;
+  }
+  const available = pairExchangeMap().get(symbol) || [];
+  if (!available.length) {
+    box.innerHTML = `<div class="empty-list">${esc(t('noExchangeForPair'))}</div>`;
+    return;
+  }
+  const sources = available.map(id => ({id, name: sourceName(id)}));
+  box.innerHTML = sources.map(src => `
+    <label class="exchange-check">
+      <input type="checkbox" value="${esc(src.id)}">
+      <span>${esc(src.name)}</span>
+    </label>
+  `).join('');
+}
+
+function selectedSources() {
+  return [...document.querySelectorAll('#exclude-exchanges input:checked')]
+    .map(input => input.value);
+}
+
+function selectAllSources() {
+  document.querySelectorAll('#exclude-exchanges input').forEach(input => input.checked = true);
+}
+
+function clearSources() {
+  document.querySelectorAll('#exclude-exchanges input').forEach(input => input.checked = false);
+}
+
+async function addExcludedPair() {
+  const symbol = document.getElementById('exclude-symbol').value;
+  const exchanges = selectedSources();
+  if (!symbol) {
+    toast(t('choosePairToast'), 'err');
+    return;
+  }
+  if (!exchanges.length) {
+    toast(t('chooseExchangeToast'), 'err');
+    return;
+  }
+
+  const existing = excludedPairs.find(item => item.symbol === symbol);
+  if (existing) {
+    existing.exchanges = [...new Set([...(existing.exchanges || []), ...exchanges])].sort();
+  } else {
+    excludedPairs.push({symbol, exchanges: exchanges.sort()});
+  }
+
+  await saveExcludedPairs();
+  document.getElementById('exclude-symbol').value = '';
+  renderExchangePicker();
+}
+
+async function removeExcludedPair(index) {
+  excludedPairs.splice(index, 1);
+  await saveExcludedPairs();
+}
+
+async function saveExcludedPairs() {
+  const r = await fetch('/api/settings', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({EXCLUDED_PAIRS: excludedPairs})
+  });
+  const d = await r.json();
+  if (d.ok) {
+    excludedPairs = d.EXCLUDED_PAIRS || excludedPairs;
+    renderExcludedPairs();
+    toast(t('excludedSaved'), 'ok');
+  } else {
+    toast(bt(d.error) || t('error'), 'err');
+  }
+}
+
+function sourceName(id) {
+  const source = scanSources.find(src => src.id === id);
+  if (source) return source.name;
+  const names = {
+    binance:'Binance', binancetr:'Binance TRY', bybit:'Bybit', bybiteu:'Bybit EU',
+    okx:'OKX', bitget:'Bitget', kucoin:'KuCoin', gateio:'Gate.io', mexc:'MEXC',
+    kraken:'Kraken', htx:'HTX', cryptocom:'Crypto.com', whitebit:'WhiteBit',
+    bingx:'BingX', bitmart:'BitMart', poloniex:'Poloniex', bitfinex:'Bitfinex',
+    lbank:'LBank', upbit:'Upbit', bitstamp:'Bitstamp', gemini:'Gemini',
+    coinbase:'Coinbase', paribu:'Paribu', btcturk:'BtcTürk', bithumb:'Bithumb',
+  };
+  if (!id.includes('@')) return names[id] || id;
+  const [dex, chain] = id.split('@');
+  const dexNames = {
+    uniswap_v2:'Uniswap V2', sushiswap:'SushiSwap',
+    pancakeswap_v2:'PancakeSwap V2', biswap:'Biswap', quickswap:'QuickSwap',
+  };
+  return `${dexNames[dex] || dex} @ ${chain}`;
+}
+
+function renderExcludedPairs() {
+  const list = document.getElementById('excluded-list');
+  if (!excludedPairs.length) {
+    list.innerHTML = `<div class="empty-list">${esc(t('excludedEmpty'))}</div>`;
+    return;
+  }
+  list.innerHTML = excludedPairs.map((item, index) => `
+    <div class="excluded-item">
+      <div>
+        <div class="excluded-symbol">${esc(item.symbol)}</div>
+        <div class="excluded-exchanges">
+          ${(item.exchanges || []).map(ex => `<span class="pill">${esc(sourceName(ex))}</span>`).join('')}
+        </div>
+      </div>
+      <button type="button" class="delete-btn" onclick="removeExcludedPair(${index})">${esc(t('delete'))}</button>
+    </div>
+  `).join('');
+}
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+let toastTimer;
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className='toast '+type; el.style.display='block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.style.display='none', 4000);
+}
+
+async function init() {
+  applyLanguage(storedLanguage() || 'en');
+  await loadScanSources();
+  await loadScanPairs();
+  await loadSettings();
+}
+
+init();
+</script>
+</body>
+</html>

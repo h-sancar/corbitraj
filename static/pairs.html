@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Corbitraj - Pairs</title>
+<style>
+:root{--bg:#080d18;--surface:#0f1623;--card:#161e2e;--border:#1e293b;
+  --text:#e2e8f0;--muted:#64748b;--green:#10b981;--cyan:#06b6d4;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;font-size:13px;min-height:100vh;}
+.controls{padding:14px 20px;background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+#search{background:var(--card);border:1px solid var(--border);color:var(--text);
+  border-radius:6px;padding:7px 12px;font-size:13px;font-family:monospace;
+  outline:none;width:280px;}
+#search:focus{border-color:var(--cyan);}
+.count{font-size:12px;color:var(--muted);}
+.loading{text-align:center;padding:60px;color:var(--muted);font-style:italic;}
+table{width:100%;border-collapse:collapse;}
+thead th{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;
+  padding:8px 16px;text-align:left;background:var(--card);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:2;}
+tbody tr{border-bottom:1px solid #1e293b44;}
+tbody tr:hover{background:var(--card);}
+tbody td{padding:8px 16px;font-family:monospace;font-size:12px;}
+.badge{display:inline-block;border-radius:3px;padding:1px 7px;
+  font-size:10px;font-weight:600;margin:2px 2px;}
+</style>
+</head>
+<body>
+<script src="/nav.js?v=5"></script>
+
+<div class="controls">
+  <input id="search" type="text" placeholder="Filtrele (BTC, /USDT, binance...)" oninput="filter()">
+  <span class="count" id="count">Yükleniyor…</span>
+</div>
+
+<div style="overflow-x:auto">
+  <table>
+    <thead>
+      <tr><th>#</th><th>Sembol</th><th>Borsalar</th><th>Borsa Sayısı</th></tr>
+    </thead>
+    <tbody id="tbody">
+      <tr><td colspan="4" class="loading">İlk tarama bekleniyor… (30 saniye içinde güncellenir)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<script>
+const EX_COLORS = {
+  binance:'#f59e0b',bybit:'#f97316',kucoin:'#10b981',
+  gateio:'#3b82f6',mexc:'#8b5cf6',default:'#475569'
+};
+const QUOTE_COLORS = {
+  USDT:'#10b981',BTC:'#f59e0b',ETH:'#8b5cf6',BNB:'#f97316',
+  USDC:'#06b6d4',BUSD:'#3b82f6',default:'#64748b'
+};
+const I18N = {
+  tr: {
+    title: 'Corbitraj - Pairler',
+    searchPlaceholder: 'Filtrele (BTC, /USDT, binance...)',
+    loading: 'Yükleniyor...',
+    symbol: 'Sembol',
+    exchanges: 'Borsalar',
+    exchangeCount: 'Borsa Sayısı',
+    firstScan: 'İlk tarama bekleniyor... (30 saniye içinde güncellenir)',
+    noResult: 'Sonuç yok',
+    notScanned: 'Henüz tarama yapılmadı',
+  },
+  en: {
+    title: 'Corbitraj - Pairs',
+    searchPlaceholder: 'Filter (BTC, /USDT, binance...)',
+    loading: 'Loading...',
+    symbol: 'Symbol',
+    exchanges: 'Exchanges',
+    exchangeCount: 'Exchange Count',
+    firstScan: 'Waiting for first scan... (updates within 30 seconds)',
+    noResult: 'No results',
+    notScanned: 'No scan yet',
+  },
+};
+
+let allPairs = [];
+let scanStarted = false;
+
+function lang() {
+  return window.CorbitrajI18n?.getLang?.() || 'en';
+}
+
+function t(key) {
+  return I18N[lang()]?.[key] || I18N.tr[key] || key;
+}
+
+function applyLanguage() {
+  document.documentElement.lang = lang();
+  document.title = t('title');
+  document.getElementById('search').placeholder = t('searchPlaceholder');
+  const th = document.querySelectorAll('thead th');
+  if (th[1]) th[1].textContent = t('symbol');
+  if (th[2]) th[2].textContent = t('exchanges');
+  if (th[3]) th[3].textContent = t('exchangeCount');
+  if (allPairs.length) filter();
+  else {
+    document.getElementById('count').textContent = scanStarted ? t('notScanned') : t('loading');
+    document.getElementById('tbody').innerHTML =
+      `<tr><td colspan="4" class="loading">${t('firstScan')}</td></tr>`;
+  }
+}
+
+function shortEx(name) {
+  return name.replace('uniswap_v2','uni_v2').replace('pancakeswap_v2','pancake')
+             .replace('@ethereum','@eth').replace('@polygon','@poly');
+}
+
+function filter() {
+  const q = document.getElementById('search').value.trim().toUpperCase();
+  const filtered = q ? allPairs.filter(p =>
+    p.s.includes(q) || p.e.some(e => e.toUpperCase().includes(q))
+  ) : allPairs;
+  render(filtered);
+}
+
+function render(list) {
+  // Borsa sayısına göre büyükten küçüğe sırala
+  list = [...list].sort((a, b) => b.e.length - a.e.length);
+  document.getElementById('count').textContent = `${list.length} pair`;
+  if(!list.length) {
+    document.getElementById('tbody').innerHTML =
+      `<tr><td colspan="4" class="loading">${t('noResult')}</td></tr>`;
+    return;
+  }
+  document.getElementById('tbody').innerHTML = list.map((p, i) => {
+    const quote = p.s.split('/')[1] || '';
+    const qc = QUOTE_COLORS[quote] || QUOTE_COLORS.default;
+    const badges = p.e.map(ex => {
+      const exName = ex.split('@')[0];
+      const c = EX_COLORS[exName] || EX_COLORS.default;
+      return `<span class="badge" style="background:${c}18;border:1px solid ${c}35;color:${c}">${shortEx(ex)}</span>`;
+    }).join('');
+    return `<tr>
+      <td style="color:var(--muted)">${i+1}</td>
+      <td><span style="background:${qc}15;border:1px solid ${qc}30;color:${qc};
+        border-radius:4px;padding:2px 9px;font-weight:600">${p.s}</span></td>
+      <td>${badges}</td>
+      <td style="color:var(--muted)">${p.e.length}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function loadPairs() {
+  try {
+    const r = await fetch('/api/pairs');
+    const d = await r.json();
+    if(d.pairs && d.pairs.length > 0) {
+      allPairs = d.pairs;
+      filter();
+    } else {
+      scanStarted = true;
+      document.getElementById('count').textContent = t('notScanned');
+      setTimeout(loadPairs, 5000);  // 5 saniye sonra tekrar dene
+    }
+  } catch(e) {
+    setTimeout(loadPairs, 5000);
+  }
+}
+
+window.CorbitrajI18n?.onChange(applyLanguage);
+applyLanguage();
+loadPairs();
+</script>
+</body>
+</html>
