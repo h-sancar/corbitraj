@@ -18,6 +18,18 @@ The project is designed to be public-safe when committed with the included
 - Turkish and English UI, with English as the default
 - `DRY_RUN=True` by default to prevent accidental real orders
 
+## Screenshots
+
+Screenshots use demo data only; no credentials or private balances are shown.
+
+| Dashboard | Trade screen |
+| --- | --- |
+| ![Corbitraj dashboard](docs/screenshots/dashboard.png) | ![Corbitraj trade screen](docs/screenshots/trade.png) |
+
+| Scanned pairs | Settings |
+| --- | --- |
+| ![Corbitraj scanned pairs](docs/screenshots/pairs.png) | ![Corbitraj settings](docs/screenshots/settings.png) |
+
 ## Requirements
 
 - Python 3.11+
